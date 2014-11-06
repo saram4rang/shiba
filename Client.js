@@ -244,14 +244,15 @@ Client.prototype.onCashedOut = function(data) {
   console.assert(this.game.players[data.username]);
   var player = this.game.players[data.username];
   player.stopped_at = data.stopped_at;
-  player.amount     = data.amount;
 
   if (this.username === data.username) {
-    this.balance += data.amount;
-    this.userState = 'WATCHING';
+    debug('User cashout @%d: PLAYING -> CASHEDOUT', data.stopped_at);
+    this.balance += this.game.players[data.username].bet * data.stopped_at / 100;
+    this.userState = 'CASHEDOUT';
     this.emit('cashed_out', data);
     this.emit('user_cashed_out', data);
   } else {
+    debug('Player cashout @%d', data.stopped_at);
     this.emit('cashed_out', data);
   }
 };
@@ -286,7 +287,7 @@ Client.prototype.doCashout = function() {
 
   this.userState = 'CASHINGOUT';
   this.socket.emit('cash_out', function(err) {
-    if (err) console.log('Cashing out error:', err);
+    if (err) console.error('Cashing out error:', err);
   });
 };
 
