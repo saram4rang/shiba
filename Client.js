@@ -131,8 +131,8 @@ Client.prototype.onJoin = function(data) {
   this.username = data.username;
 
   // Retrieve user state from player info
-  if (!players.[this.username])
-    this.userState = 'WATCHING' :
+  if (!players[this.username])
+    this.userState = 'WATCHING';
   else if (players[this.username].stopped_at)
     this.userState = 'CASHEDOUT';
   else if(data.state == 'ENDED')
@@ -285,7 +285,9 @@ Client.prototype.doCashout = function() {
     return console.error('Cannot cashout in state: ' + this.userState);
 
   this.userState = 'CASHINGOUT';
-  this.conn.doCashout();
+  this.socket.emit('cash_out', function(err) {
+    if (err) console.log('Cashing out error:', err);
+  });
 };
 
 Client.prototype.doSetAutoCashout = function(at) {
