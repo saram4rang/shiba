@@ -4,6 +4,7 @@ var profanity    =  require('./profanity');
 var Bitstamp     =  require('./Bitstamp');
 
 var Client       =  require('./Client');
+var Lib          =  require('./Lib');
 var Db           =  require('./Db');
 var Config       =  require('./Config')();
 
@@ -185,7 +186,8 @@ Shiba.prototype.onLick = function(msg, user) {
   async.parallel(
     [ function(cb) { Db.getUsername(user, cb); },
       function(cb) { Db.getCustomLickMessages(user, cb); }
-    ], function (err, val) {
+    ],
+    function (err, val) {
       if (err) return;
 
       var username = val[0];
@@ -214,29 +216,21 @@ Shiba.prototype.onSeen = function(msg, user) {
   async.parallel(
     [ function(cb) { Db.getUsername(user, cb); },
       function(cb) { Db.getSeen(user, cb); }
-    ], function (err, val) {
+    ],
+    function (err, val) {
       if (err) return;
 
       var username = val[0];
       var msg      = val[1];
-      var time = new Date(msg.time);
-      var diff = Date.now() - time;
+      var time     = new Date(msg.time);
+      var diff     = Date.now() - time;
 
       var line;
       if (diff < 1000) {
         line = 'Seen ' + username + ' just now.';
       } else {
-        var ms = diff % 1000; diff = Math.floor(diff/1000);
-        var s  = diff % 60;   diff = Math.floor(diff/60);
-        var m  = diff % 60;   diff = Math.floor(diff/60);
-        var h  = diff % 24;   diff = Math.floor(diff/24);
-        var d  = diff;
-
-        var line = 'Seen ' + username;
-        if (d > 0) line = line + ' ' + d + 'd';
-        if (h > 0) line = line + ' ' + h + 'h';
-        if (m > 0) line = line + ' ' + m + 'm';
-        if (s > 0) line = line + ' ' + s + 's';
+        line = 'Seen ' + username + ' ';
+        line += Lib.formatTimeDiff(diff)
         line += ' ago.';
       }
 

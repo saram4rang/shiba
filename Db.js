@@ -23,6 +23,9 @@ function put(key, val, cb) {
     });
 }
 
+exports.get = get;
+exports.put = put;
+
 function userKey(user) {
     return 'user/' + user.toLowerCase();
 }

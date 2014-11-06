@@ -1,8 +1,8 @@
 var _           =  require('lodash');
 var Events      =  require('events');
 var util        =  require('util');
-var crypto      =  require('crypto');
 var SocketIO    =  require('socket.io-client');
+var Lib         =  require('./Lib');
 var debug       =  require('debug')('shiba:client');
 var debugchat   =  require('debug')('shiba:chat');
 var debugtick   =  require('debug')('shiba:tick');
@@ -189,7 +189,7 @@ Client.prototype.onGameStarted = function(bets) {
 Client.prototype.onGameTick = function(data) {
   // TODO: Simplify after server upgrade
   var elapsed = typeof data == 'object' ? data.elapsed : data;
-  debug('tick %d', elapsed);
+  debugtick('tick %d', elapsed);
   this.emit('game_tick', elapsed);
 };
 
@@ -326,9 +326,7 @@ Client.prototype.getGameInfo = function() {
     };
 
   if (this.game.state === 'ENDED') {
-    var hash = crypto.createHash('sha256');
-    hash.update(this.game.crashPoint + '|' + this.game.seed);
-    hash = hash.digest('hex');
+    var hash = Lib.sha256(this.game.crashPoint + '|' + this.game.seed);
 
     gameInfo.game_crash = this.game.crashPoint;
     gameInfo.seed       = this.game.seed;
