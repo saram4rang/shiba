@@ -2,6 +2,7 @@ var fs           =  require('fs');
 var async        =  require('async');
 var profanity    =  require('./profanity');
 var Bitstamp     =  require('./Bitstamp');
+var Blockchain   =  require('./Blockchain');
 
 var Client       =  require('./Client');
 var Lib          =  require('./Lib');
@@ -18,6 +19,7 @@ function Shiba() {
   this.setupConsoleLog();
   this.setupLossStreakComment();
   this.setupScamComment();
+  this.setupBlockchain();
 }
 
 Shiba.prototype.setupUsernameScrape = function() {
@@ -79,6 +81,14 @@ Shiba.prototype.setupScamComment = function() {
     if (gameInfo.verified != 'ok') {
       self.client.doSay('wow. such scam. very hash failure.');
     }
+  });
+};
+
+Shiba.prototype.setupBlockchain = function() {
+  var bc = new Blockchain();
+
+  bc.on('block', function(block) {
+    Db.put('block', block);
   });
 };
 
@@ -147,6 +157,7 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   case 'lick': this.onLick(msg, rest); break;
   case 'seen': this.onSeen(msg, rest); break;
   case 'convert': this.onConvert(msg, rest); break;
+  case 'block': this.onBlock(msg, rest); break;
   }
 };
 
@@ -203,6 +214,9 @@ Shiba.prototype.onSeen = function(msg, user) {
   var self = this;
   user = user.toLowerCase();
   user = user.replace(/^\s+|\s+$/g,'');
+
+  // Special treatment of block.
+  if (user === 'block') return this.onBlock();
 
   // Avoid this.
   if (user === self.client.username.toLowerCase()) return;
@@ -278,6 +292,26 @@ Shiba.prototype.onConvert = function(msg, conv) {
   } else {
     self.client.doSay('usage: !convert <number>k? (btc|bit[s])');
   }
+};
+
+Shiba.prototype.onBlock = function() {
+  var self = this;
+  Db.get('block', function(err, block) {
+    if (err) return self.client.doSay('wow. such leveldb fail');
+
+    var time     = new Date(block.time * 1000);
+    var diff     = Date.now() - time;
+
+    var line = 'Seen block #' + block.height;
+    if (diff < 1000) {
+      line += ' just now.';
+    } else {
+      line += ' ';
+      line += Lib.formatTimeDiff(diff)
+      line += ' ago.';
+    }
+    self.client.doSay(line);
+  });
 };
 
 var shiba = new Shiba();

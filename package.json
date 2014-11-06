@@ -17,7 +17,8 @@
     "levelup":          "~0.19.0",
     "lodash":           "^2.4.1",
     "requirejs":        "~2.1.15",
-    "socket.io-client": "^1.2.0"
+    "socket.io-client": "^1.2.0",
+    "ws":               "~0.4.32"
   },
   "scripts": {
     "start": "node Shiba.js --use_strict"
