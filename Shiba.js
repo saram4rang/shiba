@@ -10,7 +10,7 @@ var Db           =  require('./Db');
 var Config       =  require('./Config')();
 
 // Command syntax
-var cmdReg = /^!([a-zA-z]*)\s*(.*)$/;
+var cmdReg = /^!([a-zA-z]*)\s*(.*)$/i;
 
 function Shiba() {
   this.client = new Client(Config);
@@ -152,7 +152,7 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   else if (rate >= 3)
     return this.client.doSay('bites ' + msg.username);
 
-  switch(cmd) {
+  switch(cmd.toLowerCase()) {
   case 'custom': this.onCmdCustom(msg, rest); break;
   case 'lick': this.onCmdLick(msg, rest); break;
   case 'seen': this.onCmdSeen(msg, rest); break;
