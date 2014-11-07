@@ -153,15 +153,15 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
     return this.client.doSay('bites ' + msg.username);
 
   switch(cmd) {
-  case 'custom': this.onCustom(msg, rest); break;
-  case 'lick': this.onLick(msg, rest); break;
-  case 'seen': this.onSeen(msg, rest); break;
-  case 'convert': this.onConvert(msg, rest); break;
-  case 'block': this.onBlock(msg, rest); break;
+  case 'custom': this.onCmdCustom(msg, rest); break;
+  case 'lick': this.onCmdLick(msg, rest); break;
+  case 'seen': this.onCmdSeen(msg, rest); break;
+  case 'convert': this.onCmdConvert(msg, rest); break;
+  case 'block': this.onCmdBlock(msg, rest); break;
   }
 };
 
-Shiba.prototype.onCustom = function(msg, rest) {
+Shiba.prototype.onCmdCustom = function(msg, rest) {
   var self = this;
   if (msg.role != 'admin' &&
       msg.role != 'moderator') return;
@@ -172,7 +172,7 @@ Shiba.prototype.onCustom = function(msg, rest) {
   var customMsg   = customMatch[2];
   Db.addCustomLickMessage(customUser, customMsg, function (err) {
     if (err) {
-      console.log('onCustom:', err);
+      console.log('onCmdCustom:', err);
       self.client.doSay('wow. such leveldb fail');
     } else {
       self.client.doSay('wow. so cool. very obedient');
@@ -180,7 +180,7 @@ Shiba.prototype.onCustom = function(msg, rest) {
   });
 };
 
-Shiba.prototype.onLick = function(msg, user) {
+Shiba.prototype.onCmdLick = function(msg, user) {
   var self = this;
   user = user.toLowerCase();
   user = user.replace(/^\s+|\s+$/g,'');
@@ -210,13 +210,13 @@ Shiba.prototype.onLick = function(msg, user) {
     });
 };
 
-Shiba.prototype.onSeen = function(msg, user) {
+Shiba.prototype.onCmdSeen = function(msg, user) {
   var self = this;
   user = user.toLowerCase();
   user = user.replace(/^\s+|\s+$/g,'');
 
   // Special treatment of block.
-  if (user === 'block') return this.onBlock();
+  if (user === 'block') return this.onCmdBlock();
 
   // Avoid this.
   if (user === self.client.username.toLowerCase()) return;
@@ -252,7 +252,7 @@ Shiba.prototype.onSeen = function(msg, user) {
     });
 };
 
-Shiba.prototype.onConvert = function(msg, conv) {
+Shiba.prototype.onCmdConvert = function(msg, conv) {
   var self = this;
   conv = conv.replace(/^\s+|\s+$/g,'');
   var convReg = /^((-|\+)?[0-9]*\.?[0-9]*)(k?)\s*(bits?|btc)$/i;
@@ -294,7 +294,7 @@ Shiba.prototype.onConvert = function(msg, conv) {
   }
 };
 
-Shiba.prototype.onBlock = function() {
+Shiba.prototype.onCmdBlock = function() {
   var self = this;
   Db.get('block', function(err, block) {
     if (err) return self.client.doSay('wow. such leveldb fail');
