@@ -9,11 +9,11 @@ module.exports =
       },
     formatTimeDiff:
       function(diff) {
-        var diff = Math.floor(diff / 1000);
+        diff = Math.floor(diff / 1000);
 
-        var s  = diff % 60;   diff = Math.floor(diff/60);
-        var m  = diff % 60;   diff = Math.floor(diff/60);
-        var h  = diff % 24;   diff = Math.floor(diff/24);
+        var s  = diff % 60; diff = Math.floor(diff/60);
+        var m  = diff % 60; diff = Math.floor(diff/60);
+        var h  = diff % 24; diff = Math.floor(diff/24);
         var d  = diff;
 
         var words = [];
@@ -22,5 +22,9 @@ module.exports =
         if (m > 0) words.push('' + m + 'm');
         if (s > 0) words.push('' + s + 's');
         return words.join(' ');
+      },
+    formatFactor:
+      function(f) {
+        return (f/100).toFixed(2);
       }
   };

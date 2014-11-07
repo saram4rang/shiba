@@ -37,7 +37,7 @@ exports.getInfo = function(cb) {
     console.error('Error getting Bitstamp ticker:' + e);
     cb(e);
   });
-}
+};
 
 exports.getAveragePrice = function (cb) {
   exports.getInfo(function(err, info) {

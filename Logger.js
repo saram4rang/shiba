@@ -1,6 +1,7 @@
 var fs           =  require('fs');
 
 var Client       =  require('./Client');
+var Lib          =  require('./Lib');
 var Config       =  require('./Config')('logger');
 
 function ensureDirSync(dir) {
@@ -21,8 +22,9 @@ function Logger() {
 Logger.prototype.setupConsoleLog = function() {
   var self = this;
   self.client.on('game_starting', function(info) {
-    var line = "Starting " + info.game_id
-        + " " + info.hash.substring(0,8);
+    var line =
+        "Starting " + info.game_id +
+        " " + info.hash.substring(0,8);
     process.stdout.write(line);
   });
 
@@ -32,7 +34,7 @@ Logger.prototype.setupConsoleLog = function() {
 
   self.client.on('game_crash', function(data) {
     var gameInfo = self.client.getGameInfo();
-    var crash = (data.game_crash/100).toFixed(2)
+    var crash = Lib.formatFactor(data.game_crash);
     process.stdout.write(" @" + crash + "x " + gameInfo.verified + "\n");
   });
 };

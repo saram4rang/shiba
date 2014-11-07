@@ -38,8 +38,9 @@ Shiba.prototype.setupUsernameScrape = function() {
 Shiba.prototype.setupConsoleLog = function() {
   var self = this;
   self.client.on('game_starting', function(info) {
-    var line = "Starting " + info.game_id
-        + " " + info.hash.substring(0,8);
+    var line =
+        "Starting " + info.game_id +
+        " " + info.hash.substring(0,8);
     process.stdout.write(line);
   });
 
@@ -49,7 +50,7 @@ Shiba.prototype.setupConsoleLog = function() {
 
   self.client.on('game_crash', function(data) {
     var gameInfo = self.client.getGameInfo();
-    var crash = (data.game_crash/100).toFixed(2)
+    var crash = Lib.formatFactor(data.game_crash);
     process.stdout.write(" @" + crash + "x " + gameInfo.verified + "\n");
   });
 };
@@ -244,7 +245,7 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
         line = 'Seen ' + username + ' just now.';
       } else {
         line = 'Seen ' + username + ' ';
-        line += Lib.formatTimeDiff(diff)
+        line += Lib.formatTimeDiff(diff);
         line += ' ago.';
       }
 
@@ -307,7 +308,7 @@ Shiba.prototype.onCmdBlock = function() {
       line += ' just now.';
     } else {
       line += ' ';
-      line += Lib.formatTimeDiff(diff)
+      line += Lib.formatTimeDiff(diff);
       line += ' ago.';
     }
     self.client.doSay(line);

@@ -45,7 +45,7 @@ function Client(config) {
    *    The user played in this round but didn't successfully cashout
    *    before the game crashed.
    */
-  this.userState = null
+  this.userState = null;
   this.username  = null;
   this.balance   = null;
   this.game      = null;
@@ -194,7 +194,7 @@ Client.prototype.onGameTick = function(data) {
 };
 
 Client.prototype.onGameCrash = function(data) {
-  var crash = (data.game_crash/100).toFixed(2);
+  var crash = Lib.formatFactor(data.game_crash);
   debug('game #%d crashed @%sx', this.game.id, crash);
   this.game.seed       = data.seed;
   this.game.crashPoint = data.game_crash;
@@ -302,15 +302,15 @@ Client.prototype.doSetAutoCashout = function(at) {
 };
 
 Client.prototype.doSay = function(line) {
-    debug('Saying: %s', line);
-    this.socket.emit('say', line);
+  debug('Saying: %s', line);
+  this.socket.emit('say', line);
 };
 
 Client.prototype.doMute = function(user, timespec) {
-    debug('Muting user: %s time: %s', user, timespec);
-    var line = '/mute ' + user;
-    if (timespec) line = line + ' ' + timespec;
-    this.socket.emit('say', line);
+  debug('Muting user: %s time: %s', user, timespec);
+  var line = '/mute ' + user;
+  if (timespec) line = line + ' ' + timespec;
+  this.socket.emit('say', line);
 };
 
 Client.prototype.getPlayers = function() {

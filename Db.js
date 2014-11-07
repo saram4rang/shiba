@@ -19,7 +19,7 @@ function get(key, cb) {
 function put(key, val, cb) {
     db.put(key, val, function(err) {
         if (err) console.error ("Putting '%s' failed: %s", key, err);
-        cb && cb(err);
+        return cb && cb(err);
     });
 }
 
