@@ -120,6 +120,7 @@ Client.prototype.onJoin = function(data) {
       players:         data.player_info,
       state:           data.state,
       startTime:       new Date(data.created),
+      tick:            data.elapsed,
       // Valid after crashed
       crashpoint:      null,
       seed:            null
@@ -190,6 +191,7 @@ Client.prototype.onGameTick = function(data) {
   // TODO: Simplify after server upgrade
   var elapsed = typeof data == 'object' ? data.elapsed : data;
   debugtick('tick %d', elapsed);
+  this.game.tick = elapsed;
   this.emit('game_tick', elapsed);
 };
 
@@ -323,7 +325,8 @@ Client.prototype.getGameInfo = function() {
       game_id:      this.game.id,
       hash:         this.game.hash,
       player_info:  this.game.players,
-      state:        this.game.state
+      state:        this.game.state,
+      tick:         this.game.tick
     };
 
   if (this.game.state === 'ENDED') {
