@@ -126,15 +126,20 @@ Shiba.prototype.onSay = function(msg) {
   if (cloudmineMatch) return this.client.doMute(msg.username, '6h');
 
   var after, messages;
-  // Rate limiter 5 messages in 5s
+  // Rate limiter < 3 messages in 0.8s
+  after    = new Date(Date.now() - 800);
+  messages = this.getChatMessages(msg.username, after);
+  if (messages.length >= 3) return this.client.doMute(msg.username, '15m');
+
+  // Rate limiter < 5 messages in 5s
   after    = new Date(Date.now() - 5000);
   messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 6) return this.client.doMute(msg.username, '15m');
+  if (messages.length >= 5) return this.client.doMute(msg.username, '15m');
 
-  // Rate limiter 8 messages in 12s
+  // Rate limiter < 8 messages in 12s
   after    = new Date(Date.now() - 12000);
   messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 9) return this.client.doMute(msg.username, '15m');
+  if (messages.length >= 8) return this.client.doMute(msg.username, '15m');
 
   var cmdMatch = msg.message.match(cmdReg);
   if (cmdMatch) this.onCmd(msg, cmdMatch[1], cmdMatch[2]);
