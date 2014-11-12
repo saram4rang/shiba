@@ -100,14 +100,15 @@ Shiba.prototype.getChatMessages = function(username, after) {
     then = new Date(chatHistory[i].time);
     if (then < after) break;
 
-    if (chatHistory[i].username == username)
+    if (chatHistory[i].type === 'say' &&
+        chatHistory[i].username === username)
       messages.push(chatHistory[i]);
   }
   return messages;
 };
 
 Shiba.prototype.onSay = function(msg) {
-  if (msg.username == this.client.username) return;
+  if (msg.username === this.client.username) return;
 
   // Coinurl blocking
   var coinurlReg = /http:\/\/cur\.lv\/.*/i;
