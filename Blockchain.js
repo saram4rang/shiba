@@ -22,10 +22,10 @@ Blockchain.prototype.doConnect = function() {
   debug('Connecting to Blockchain API.');
   var self = this;
   var socket = new WebSocket('ws://ws.blockchain.info/inv');
+  socket.on('error', self.onError.bind(self));
   socket.on('open', function() {
     self.socket = socket;
     self.socket.on('message', self.onMessage.bind(self));
-    self.socket.on('error', self.onError.bind(self));
     self.socket.on('close', self.onClose.bind(self));
     self.socket.on('pong', self.onPong.bind(self));
     self.onOpen();
