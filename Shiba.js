@@ -126,10 +126,10 @@ Shiba.prototype.onSay = function(msg) {
   if (cloudmineMatch) return this.client.doMute(msg.username, '6h');
 
   var after, messages;
-  // Rate limiter < 3 messages in 0.8s
-  after    = new Date(Date.now() - 800);
+  // Rate limiter < 4 messages in 1s
+  after    = new Date(Date.now() - 1000);
   messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 3) return this.client.doMute(msg.username, '15m');
+  if (messages.length >= 4) return this.client.doMute(msg.username, '15m');
 
   // Rate limiter < 5 messages in 5s
   after    = new Date(Date.now() - 5000);
