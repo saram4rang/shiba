@@ -1,5 +1,6 @@
 
 var https = require('https');
+var debug       =  require('debug')('shiba:bitstamp');
 
 var fetchTime = null;
 var info      =
@@ -22,11 +23,15 @@ var options =
 
 exports.getInfo = function(cb) {
   var twoMinutes = 2 * 60 * 1000;
-  if (fetchTime && fetchTime + twoMinutes < Date.now())
+  if (fetchTime && fetchTime + twoMinutes < Date.now()) {
+    debug('GetInfo served from cache');
     return cb(null, info);
+  }
 
+  debug('Requesting price ticker');
   var req = https.request(options, function(res) {
     res.on('data', function (data) {
+      debug('Received ticker data: ' + data);
       info = JSON.parse(data);
       fetchTime = Date.now();
       cb(null, info);
@@ -46,6 +51,8 @@ exports.getAveragePrice = function (cb) {
     var ask = parseInt(info.ask.replace(/\./g, ''));
     var bid = parseInt(info.bid.replace(/\./g, ''));
     var avg = (ask + bid) / 200;
+
+    debug('Average price: ' + avg);
     cb(err, avg);
   });
 };
