@@ -232,7 +232,7 @@ Client.prototype.onGameCrash = function(data) {
       this.state == 'CASHINGOUT') {
     debug('User state: %s -> CRASHED', this.userState);
     this.userState = 'CRASHED';
-    self.emit('user_loss', data);
+    this.emit('user_loss', data);
   }
 
   this.emit('game_crash', data, gameInfo);
@@ -285,7 +285,7 @@ Client.prototype.doBet = function(amount, autoCashout) {
   debug('Bet: %d @%d', amount, autoCashout);
 
   if (this.userState != 'WATCHING')
-    return console.error('Cannot place bet in state: ' + self.userState);
+    return console.error('Cannot place bet in state: ' + this.userState);
 
   this.userState = 'PLACING';
   this.socket.emit('place_bet', amount, autoCashout, function(err) {
