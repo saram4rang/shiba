@@ -126,6 +126,16 @@ Client.prototype.onJoin = function(data) {
       seed:            null
     };
 
+  // TODO: Cleanup after server upgrade
+  if (data.hasOwnProperty('player_info')) {
+    this.game.players = data.player_info;
+  }
+  if (data.hasOwnProperty('joined')) {
+    for (var i = 0; i < data.joined.length; ++i) {
+      this.game.players[data.joined[i]] = {};
+    }
+  }
+
   var players = data.player_info;
 
   this.balance  = data.balance_satoshis;
@@ -167,13 +177,16 @@ Client.prototype.onGameStarted = function(bets) {
   this.game.state     = 'IN_PROGRESS';
   this.game.startTime = new Date();
 
-  Object.keys(bets).forEach(function(username) {
-    if (self.username === username)
-      self.balance -= bets[username];
+  for (var username in bets) {
+    if (this.username === username)
+      this.balance -= bets[username];
+
     // TODO: simplify after server upgrade
-    if (self.game.players.hasOwnProperty(username))
-      self.game.players[username].bet = bets[username];
-  });
+    if (this.game.players.hasOwnProperty(username))
+      this.game.players[username].bet = bets[username];
+    else
+      this.game.players[username] = { bet: bets[username] };
+  };
 
   if (this.userState == 'PLACED') {
     debug('User state: PLACED -> PLAYING');
