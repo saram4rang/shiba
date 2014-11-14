@@ -1,18 +1,6 @@
-
-var https = require('https');
-var debug       =  require('debug')('shiba:bitstamp');
-
-var fetchTime = null;
-var info      =
-  { "high":      "333.99",
-    "last":      "327.27",
-    "timestamp": "1415030401",
-    "bid":       "326.55",
-    "vwap":      "328.65",
-    "volume":    "9536.30242027",
-    "low":       "322.00",
-    "ask":       "327.19"
-  };
+var AsyncCache = require('async-cache');
+var https      = require('https');
+var debug      = require('debug')('shiba:bitstamp');
 
 var options =
   { hostname: 'www.bitstamp.net',
@@ -21,20 +9,12 @@ var options =
     method:   'GET'
   };
 
-exports.getInfo = function(cb) {
-  var twoMinutes = 2 * 60 * 1000;
-  if (fetchTime && fetchTime + twoMinutes < Date.now()) {
-    debug('GetInfo served from cache');
-    return cb(null, info);
-  }
-
+function getTicker(cb) {
   debug('Requesting price ticker');
   var req = https.request(options, function(res) {
     res.on('data', function (data) {
       debug('Received ticker data: ' + data);
-      info = JSON.parse(data);
-      fetchTime = Date.now();
-      cb(null, info);
+      cb(null, JSON.parse(data));
     });
   });
   req.end();
@@ -42,14 +22,23 @@ exports.getInfo = function(cb) {
     console.error('Error getting Bitstamp ticker:' + e);
     cb(e);
   });
+}
+
+var tickerCache = new AsyncCache({
+  maxAge: 1000 * 60 * 2,
+  load: function (key, cb) { getTicker(cb) }
+});
+
+exports.getInfo = function(cb) {
+  tickerCache.get('', cb);
 };
 
 exports.getAveragePrice = function (cb) {
-  exports.getInfo(function(err, info) {
+  tickerCache.get('', function(err, ticker) {
     if (err) return cb(err);
 
-    var ask = parseInt(info.ask.replace(/\./g, ''));
-    var bid = parseInt(info.bid.replace(/\./g, ''));
+    var ask = parseInt(ticker.ask.replace(/\./g, ''));
+    var bid = parseInt(ticker.bid.replace(/\./g, ''));
     var avg = (ask + bid) / 200;
 
     debug('Average price: ' + avg);
