@@ -125,6 +125,11 @@ Shiba.prototype.onSay = function(msg) {
   var cloudmineMatch = msg.message.match(minefieldReg);
   if (cloudmineMatch) return this.client.doMute(msg.username, '6h');
 
+  // Strongbank blocking
+  var strongbankReg = /https?:\/\/strongbank\.biz\/\?.*ref=.*/i
+  var strongbankMatch = msg.message.match(strongbankReg);
+  if (strongbankMatch) return this.client.doMute(msg.username, '6h');
+
   var after, messages;
   // Rate limiter < 4 messages in 1s
   after    = new Date(Date.now() - 1000);
