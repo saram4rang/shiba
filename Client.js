@@ -4,6 +4,8 @@ var util        =  require('util');
 var SocketIO    =  require('socket.io-client');
 var Lib         =  require('./Lib');
 var debug       =  require('debug')('shiba:client');
+var debuggame   =  require('debug')('shiba:game');
+var debuguser   =  require('debug')('shiba:user');
 var debugchat   =  require('debug')('shiba:chat');
 var debugtick   =  require('debug')('shiba:tick');
 
@@ -155,7 +157,7 @@ Client.prototype.onJoin = function(data) {
 };
 
 Client.prototype.onGameStarting = function(data) {
-  debug('game #%d starting', data.game_id);
+  debuggame('Game #%d starting', data.game_id);
   this.game =
     { id:              data.game_id,
       hash:            data.hash,
@@ -172,7 +174,7 @@ Client.prototype.onGameStarting = function(data) {
 };
 
 Client.prototype.onGameStarted = function(bets) {
-  debug('game #%d started', this.game.id);
+  debuggame('Game #%d started', this.game.id);
   var self = this;
   this.game.state     = 'IN_PROGRESS';
   this.game.startTime = new Date();
@@ -189,11 +191,11 @@ Client.prototype.onGameStarted = function(bets) {
   };
 
   if (this.userState == 'PLACED') {
-    debug('User state: PLACED -> PLAYING');
+    debuguser('User state: PLACED -> PLAYING');
     this.userState = 'PLAYING';
   } else if (this.userState == 'PLACING') {
-    debug('Bet failed.');
-    debug('User state: PLACING -> WATCHING');
+    debuguser('Bet failed.');
+    debuguser('User state: PLACING -> WATCHING');
     this.userState = 'WATCHING';
   }
 
@@ -210,7 +212,7 @@ Client.prototype.onGameTick = function(data) {
 
 Client.prototype.onGameCrash = function(data) {
   var crash = Lib.formatFactor(data.game_crash);
-  debug('game #%d crashed @%sx', this.game.id, crash);
+  debuggame('Game #%d crashed @%sx', this.game.id, crash);
   this.game.seed       = data.seed;
   this.game.crashPoint = data.game_crash;
   this.game.state      = 'ENDED';
@@ -230,7 +232,7 @@ Client.prototype.onGameCrash = function(data) {
 
   if (this.userState == 'PLAYING' ||
       this.state == 'CASHINGOUT') {
-    debug('User state: %s -> CRASHED', this.userState);
+    debuguser('User state: %s -> CRASHED', this.userState);
     this.userState = 'CRASHED';
     this.emit('user_loss', data);
   }
@@ -242,7 +244,7 @@ Client.prototype.onPlayerBet = function(data) {
   this.game.players[data.username] = data;
 
   if (this.username === data.username) {
-    debug('User state: %s -> PLACED', this.userState);
+    debuguser('User state: %s -> PLACED', this.userState);
     this.userState = 'PLACED';
     // TODO: deprecate after server upgrade
     if (!data.hasOwnProperty('index'))
@@ -250,7 +252,7 @@ Client.prototype.onPlayerBet = function(data) {
     this.emit('player_bet', data);
     this.emit('user_bet', data);
   } else {
-    debug('Player bet: %s', JSON.stringify(data));
+    debuggame('Player bet: %s', JSON.stringify(data));
     this.emit('player_bet', data);
   }
 };
@@ -261,13 +263,13 @@ Client.prototype.onCashedOut = function(data) {
   player.stopped_at = data.stopped_at;
 
   if (this.username === data.username) {
-    debug('User cashout @%d: PLAYING -> CASHEDOUT', data.stopped_at);
+    debuguser('User cashout @%d: PLAYING -> CASHEDOUT', data.stopped_at);
     this.balance += this.game.players[data.username].bet * data.stopped_at / 100;
     this.userState = 'CASHEDOUT';
     this.emit('cashed_out', data);
     this.emit('user_cashed_out', data);
   } else {
-    debug('Player cashout @%d', data.stopped_at);
+    debuggame('Player cashout @%d', data.stopped_at);
     this.emit('cashed_out', data);
   }
 };
@@ -282,7 +284,7 @@ Client.prototype.onMsg = function(msg) {
 };
 
 Client.prototype.doBet = function(amount, autoCashout) {
-  debug('Bet: %d @%d', amount, autoCashout);
+  debuguser('Bet: %d @%d', amount, autoCashout);
 
   if (this.userState != 'WATCHING')
     return console.error('Cannot place bet in state: ' + this.userState);
@@ -294,7 +296,7 @@ Client.prototype.doBet = function(amount, autoCashout) {
 };
 
 Client.prototype.doCashout = function() {
-  debug('Cashing out');
+  debuguser('Cashing out');
   if (this.userState != 'PLAYING' &&
       this.userState != 'PLACING' &&
       this.userState != 'PLACED')
@@ -307,7 +309,7 @@ Client.prototype.doCashout = function() {
 };
 
 Client.prototype.doSetAutoCashout = function(at) {
-  debug('Setting auto cashout: %d', at);
+  debuguser('Setting auto cashout: %d', at);
   if (this.userState != 'PLAYING' &&
       this.userState != 'PLACING' &&
       this.userState != 'PLACED')
@@ -317,12 +319,12 @@ Client.prototype.doSetAutoCashout = function(at) {
 };
 
 Client.prototype.doSay = function(line) {
-  debug('Saying: %s', line);
+  debugchat('Saying: %s', line);
   this.socket.emit('say', line);
 };
 
 Client.prototype.doMute = function(user, timespec) {
-  debug('Muting user: %s time: %s', user, timespec);
+  debugchat('Muting user: %s time: %s', user, timespec);
   var line = '/mute ' + user;
   if (timespec) line = line + ' ' + timespec;
   this.socket.emit('say', line);
