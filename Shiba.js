@@ -1,5 +1,6 @@
 var fs           =  require('fs');
 var async        =  require('async');
+var unshort      =  require('unshort');
 var profanity    =  require('./profanity');
 var Bitstamp     =  require('./Bitstamp');
 var Blockchain   =  require('./Blockchain');
@@ -8,6 +9,8 @@ var Client       =  require('./Client');
 var Lib          =  require('./Lib');
 var Db           =  require('./Db');
 var Config       =  require('./Config')();
+
+var debug        =  require('debug')('shiba');
 
 // Command syntax
 var cmdReg = /^!([a-zA-z]*)\s*(.*)$/i;
@@ -110,44 +113,72 @@ Shiba.prototype.getChatMessages = function(username, after) {
 Shiba.prototype.onSay = function(msg) {
   if (msg.username === this.client.username) return;
 
-  // Coinurl blocking
-  var coinurlReg = /http:\/\/cur\.lv\/.*/i;
-  var coinurlMatch = msg.message.match(coinurlReg);
-  if (coinurlMatch) return this.client.doMute(msg.username, '6h');
+  var regexs  = [ /cloud.*mining.*vk\.cc\/[0-9a-z]/i,
+                  /cur\.lv\/.*/i,
+                  /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i,
+                  /strongbank\.biz\/\?.*ref=.*/i,
+                  /satoshimines\.com\/a\/[^\s]+/i
+                ];
 
-  // Minefield blocking
-  var minefieldReg = /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i;
-  var minefieldMatch = msg.message.match(minefieldReg);
-  if (minefieldMatch) return this.client.doMute(msg.username, '6h');
+  // Match entire message against the regular expressions.
+  for (var r = 0; r < regexs.length; ++r)
+    if (msg.message.match(regexs[r]))
+      return this.client.doMute(msg.username, '6h');
 
-  // Cloud mining
-  var cloudmineReg = /cloud.*mining.*http:\/\/vk\.cc\/[0-9a-z]/i;
-  var cloudmineMatch = msg.message.match(minefieldReg);
-  if (cloudmineMatch) return this.client.doMute(msg.username, '6h');
+  // Extract a list of URLs.
+  // TODO: The regular expression could be made more intelligent.
+  var urls = msg.message.match(/https?:\/\/[^\s]+/ig) || [];
 
-  // Strongbank blocking
-  var strongbankReg = /https?:\/\/strongbank\.biz\/\?.*ref=.*/i
-  var strongbankMatch = msg.message.match(strongbankReg);
-  if (strongbankMatch) return this.client.doMute(msg.username, '6h');
+  var urls2 = msg.message.match(/(\s|^)bit.ly\/[^s]+/ig);
+  if (urls2) {
+    for (var i = 0; i < urls2.length; ++i)
+      urls2[i] = 'http://' + urls2[i].replace(/^\s+/g,'');
+    urls = urls.concat(urls2);
+  }
+  var urls3 = msg.message.match(/(\s|^)goo.gl\/[^s]+/ig);
+  if (urls3) {
+    for (var i = 0; i < urls3.length; ++i)
+      urls3[i] = 'http://' + urls3[i].replace(/^\s+/g,'');
+    urls = urls.concat(urls3);
+  }
 
-  var after, messages;
-  // Rate limiter < 4 messages in 1s
-  after    = new Date(Date.now() - 1000);
-  messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 4) return this.client.doMute(msg.username, '15m');
+  // Unshorten extracted URLs.
+  var self = this;
+  async.map(urls, unshort, function(err, urls2) {
+    urls = urls.concat(urls2);
+    for (var i = 0; i < urls.length; ++i) {
+      var url    = urls[i];
+      debug('Checking url: ' + url);
 
-  // Rate limiter < 5 messages in 5s
-  after    = new Date(Date.now() - 5000);
-  messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 5) return this.client.doMute(msg.username, '15m');
+      // Run the regular expressions against the unshortened url.
+      for (var r = 0; r < regexs.length; ++r)
+        if (url.match(regexs[r])) {
+          debug('URL matched ' + regexs[r]);
+          return self.client.doMute(msg.username, '24h');
+        }
+    }
 
-  // Rate limiter < 8 messages in 12s
-  after    = new Date(Date.now() - 12000);
-  messages = this.getChatMessages(msg.username, after);
-  if (messages.length >= 8) return this.client.doMute(msg.username, '15m');
+    var after, messages;
+    // Rate limiter < 4 messages in 1s
+    after    = new Date(Date.now() - 1000);
+    messages = self.getChatMessages(msg.username, after);
+    if (messages.length >= 4) return self.client.doMute(msg.username, '15m');
 
-  var cmdMatch = msg.message.match(cmdReg);
-  if (cmdMatch) this.onCmd(msg, cmdMatch[1], cmdMatch[2]);
+    // Rate limiter < 5 messages in 5s
+    after    = new Date(Date.now() - 5000);
+    messages = self.getChatMessages(msg.username, after);
+    if (messages.length >= 5) return self.client.doMute(msg.username, '15m');
+
+    // Rate limiter < 8 messages in 12s
+    after    = new Date(Date.now() - 12000);
+    messages = self.getChatMessages(msg.username, after);
+    if (messages.length >= 8) return self.client.doMute(msg.username, '15m');
+
+    // Everything checked out fine so far. Continue with the command
+    // processing phase.
+    var cmdMatch = msg.message.match(cmdReg);
+    if (cmdMatch) self.onCmd(msg, cmdMatch[1], cmdMatch[2]);
+  });
 };
 
 Shiba.prototype.onCmd = function(msg, cmd, rest) {
