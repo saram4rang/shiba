@@ -117,7 +117,8 @@ Shiba.prototype.onSay = function(msg) {
                   /cur\.lv\/.*/i,
                   /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i,
                   /strongbank\.biz\/\?.*ref=.*/i,
-                  /satoshimines\.com\/a\/[^\s]+/i
+                  /satoshimines\.com\/a\/[^\s]+/i,
+                  /hashprofit.com\/.*\?.*hp=[0-9]*/i
                 ];
 
   // Match entire message against the regular expressions.
