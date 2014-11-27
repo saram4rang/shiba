@@ -11,6 +11,7 @@ var Db           =  require('./Db');
 var Config       =  require('./Config')();
 
 var debug        =  require('debug')('shiba');
+var debugunshort =  require('debug')('shiba:unshort');
 
 // Command syntax
 var cmdReg = /^!([a-zA-z]*)\s*(.*)$/i;
@@ -143,18 +144,31 @@ Shiba.prototype.onSay = function(msg) {
     urls = urls.concat(urls3);
   }
 
+  if (urls.length > 0)
+    debugunshort('Found urls:' + JSON.stringify(urls));
+
   // Unshorten extracted URLs.
   var self = this;
   async.map(urls, unshort, function(err, urls2) {
+    debugunshort('Unshorted finished: ' + JSON.stringify(urls2));
+
+    if (err) {
+      console.error("Got error while unshortening: '" + err + "'");
+      console.error("Urls was:", JSON.stringify(urls));
+      console.error("Urls2 is:", JSON.stringify(urls2));
+    }
     urls = urls.concat(urls2);
+
+    debugunshort('Url list: ' + JSON.stringify(urls));
     for (var i = 0; i < urls.length; ++i) {
       var url    = urls[i];
-      debug('Checking url: ' + url);
+      if (typeof url != 'string') continue;
+      debugunshort('Checking url: ' + url);
 
       // Run the regular expressions against the unshortened url.
       for (var r = 0; r < regexs.length; ++r)
         if (url.match(regexs[r])) {
-          debug('URL matched ' + regexs[r]);
+          debugunshort('URL matched ' + regexs[r]);
           return self.client.doMute(msg.username, '24h');
         }
     }
