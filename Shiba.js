@@ -313,7 +313,7 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
 Shiba.prototype.onCmdConvert = function(msg, conv) {
   var self = this;
   conv = conv.replace(/^\s+|\s+$/g,'');
-  var convReg = /^((-|\+)?[0-9]*\.?[0-9]*)(k?)\s*(bits?|btc)$/i;
+  var convReg = /^((-|\+)?[0-9]*\.?[0-9]*)(k?)\s*(bits?|btc|usd)$/i;
   var convMatch = conv.match(convReg);
 
   if (convMatch) {
