@@ -354,6 +354,9 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
           btcAmount *= 1000;
           bitAmount *= 1000;
         }
+        
+        +btcAmount = btcAmount.toFixed(8);
++        bitAmount = bitAmount.toFixed(2);
         self.client.doSay(conv + ' is ' + bitAmount + ' Bit(s) ' + btcAmount + ' BTC');
       }
     });
