@@ -332,7 +332,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
           usd *= 1000;
         }
         self.client.doSay(conv + ' is ' + amount + ' Bit ' + usd + ' USD');
-      } else {
+      } else if (currency === 'bits' || currency === 'bit') {
         usd = amount * price;
         if (modifier === 'k' || modifier === 'K') {
           amount /= 1000;
@@ -345,10 +345,20 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
         amount = amount.toFixed(8);
         amount = amount.replace(/\.0*$|0*$/,'');
         self.client.doSay(conv + ' is ' + amount + ' BTC ' + usd + ' USD');
+      } else if (currency === 'usd') {
+        var usdAmount = amount;
+        var btcAmount = usdAmount / price;
+        var bitAmount = btcAmount * 1000000;
+
+        if (modifier === 'k' || modifier === 'K') {
+          btcAmount *= 1000;
+          bitAmount *= 1000;
+        }
+        self.client.doSay(conv + ' is ' + bitAmount + ' Bit(s) ' + btcAmount + ' BTC');
       }
     });
   } else {
-    self.client.doSay('usage: !convert <number>k? (btc|bit[s])');
+    self.client.doSay('usage: !convert <number>k? (btc|bit[s]|usd)');
   }
 };
 
