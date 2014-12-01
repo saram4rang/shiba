@@ -315,14 +315,15 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
   conv = conv.replace(/^\s+|\s+$/g,'');
   var convReg = /^((-|\+)?[0-9]*\.?[0-9]*)(k?)\s*(bits?|btc|usd)$/i;
   var convMatch = conv.match(convReg);
+  debug('Convert matching: ' + JSON.stringify(convMatch));
 
   if (convMatch) {
     Bitstamp.getAveragePrice(function(err, price) {
 
-      console.log(convMatch);
       var amount   = parseFloat(convMatch[1], 10);
       var modifier = convMatch[3];
       var currency = convMatch[4].toLowerCase();
+      var usd;
 
       if (currency === 'btc') {
         usd    = amount * price;
@@ -355,8 +356,8 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
           bitAmount *= 1000;
         }
         
-        +btcAmount = btcAmount.toFixed(8);
-+        bitAmount = bitAmount.toFixed(2);
+        btcAmount = btcAmount.toFixed(8);
+        bitAmount = bitAmount.toFixed(2);
 
         self.client.doSay(conv + ' is ' + bitAmount + ' bit(s) ' + '(' + btcAmount + ' BTC' + ')');
       }
