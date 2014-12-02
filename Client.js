@@ -1,13 +1,16 @@
 var _           =  require('lodash');
 var Events      =  require('events');
 var util        =  require('util');
+var microtime   =  require('microtime');
 var SocketIO    =  require('socket.io-client');
-var Lib         =  require('./Lib');
 var debug       =  require('debug')('shiba:client');
 var debuggame   =  require('debug')('shiba:game');
 var debuguser   =  require('debug')('shiba:user');
 var debugchat   =  require('debug')('shiba:chat');
 var debugtick   =  require('debug')('shiba:tick');
+
+var Lib         =  require('./Lib');
+var LinearModel =  require('./LinearModel');
 
 module.exports = Client;
 
@@ -51,6 +54,7 @@ function Client(config) {
   this.username  = null;
   this.balance   = null;
   this.game      = null;
+  this.tickModel = null;
 
   this.gameHistory = [];
   this.chatHistory = [];
@@ -110,7 +114,9 @@ Client.prototype.onJoin = function(data) {
     { state:        data.state,
       game_id:      data.game_id,
       hash:         data.hash,
-      elapsed:      data.elapsed
+      elapsed:      data.elapsed,
+      username:     data.username,
+      balance:      data.balance_satoshis
     };
 
   debug('Resetting client state\n%s', JSON.stringify(copy, null, ' '));
@@ -122,7 +128,8 @@ Client.prototype.onJoin = function(data) {
       players:         data.player_info,
       state:           data.state,
       startTime:       new Date(data.created),
-      tick:            data.elapsed,
+      microStartTime:  null,
+      ticks:           [],
       // Valid after crashed
       crashpoint:      null,
       seed:            null
@@ -136,6 +143,19 @@ Client.prototype.onJoin = function(data) {
     for (var i = 0; i < data.joined.length; ++i) {
       this.game.players[data.joined[i]] = {};
     }
+  }
+
+  if (data.state === 'IN_PROGRESS') {
+    this.game.microStartTime = this.game.startTime * 1000;
+    var tickInfo =
+      { elapsed: data.elapsed,
+        growth:  Lib.growthFunc(data.elapsed),
+        micro:   microtime.now() - this.game.microStartTime
+      };
+    this.game.ticks.push(tickInfo);
+    this.tickModel = new LinearModel();
+    this.tickModel.add(0,0);
+    this.tickModel.add(tickInfo.elapsed, tickInfo.micro);
   }
 
   var players = data.player_info;
@@ -164,6 +184,8 @@ Client.prototype.onGameStarting = function(data) {
       players:         {},
       state:           'STARTING',
       startTime:       new Date(Date.now() + data.time_till_start),
+      microStartTime:  microtime.now() + 1000 * data.time_till_start,
+      ticks:           [],
       // Valid after crashed
       crashpoint:      null,
       seed:            null
@@ -175,9 +197,9 @@ Client.prototype.onGameStarting = function(data) {
 
 Client.prototype.onGameStarted = function(bets) {
   debuggame('Game #%d started', this.game.id);
-  var self = this;
-  this.game.state     = 'IN_PROGRESS';
-  this.game.startTime = new Date();
+  this.game.state          = 'IN_PROGRESS';
+  this.game.startTime      = new Date();
+  this.game.microStartTime = microtime.now();
 
   for (var username in bets) {
     if (this.username === username)
@@ -189,6 +211,15 @@ Client.prototype.onGameStarted = function(bets) {
     else
       this.game.players[username] = { bet: bets[username] };
   };
+
+  var tickInfo =
+    { elapsed: 0,
+      growth: 100,
+      micro: 0
+    };
+  this.game.ticks.push(tickInfo);
+  this.tickModel = new LinearModel();
+  this.tickModel.add(0, 0);
 
   if (this.userState == 'PLACED') {
     debuguser('User state: PLACED -> PLAYING');
@@ -204,10 +235,29 @@ Client.prototype.onGameStarted = function(bets) {
 
 Client.prototype.onGameTick = function(data) {
   // TODO: Simplify after server upgrade
-  var elapsed = typeof data == 'object' ? data.elapsed : data;
-  debugtick('tick %d', elapsed);
-  this.game.tick = elapsed;
-  this.emit('game_tick', elapsed);
+  var elapsed      = typeof data == 'object' ? data.elapsed : data;
+  var at           = Lib.growthFunc(elapsed);
+  var previousTick = this.getLastTick();
+  var micro        = microtime.now();
+  var tickInfo     = { elapsed: elapsed,
+                       growth: at,
+                       micro: micro - this.game.microStartTime
+                     };
+  this.game.ticks.push(tickInfo);
+  this.tickModel.add(elapsed, tickInfo.micro);
+
+  var diffElapsed = tickInfo.elapsed - previousTick.elapsed;
+  var diffMicro   = tickInfo.micro - previousTick.micro;
+  var next        = this.estimateNextTick();
+  var line        = Lib.formatFactor(at);
+  line = line + " elapsed " + elapsed;
+  line = line + " 'ΔElapsed " + diffElapsed + "'";
+  line = line + " 'ΔMicro " + diffMicro + "'";
+  line = line + " next " + Lib.formatFactor(next.upper.growth);
+  line = line + " " + next.lower.elapsed + ' < tick < ' + next.upper.elapsed;
+
+  debugtick('Tick ' + line);
+  this.emit('game_tick', tickInfo);
 };
 
 Client.prototype.onGameCrash = function(data) {
@@ -330,6 +380,75 @@ Client.prototype.doMute = function(user, timespec) {
   this.socket.emit('say', line);
 };
 
+Client.prototype.getLastTick = function() {
+  if (this.game.ticks.length > 0)
+    return _.last(this.game.ticks);
+  else
+    return { elapsed: 0,
+             growth: 100,
+             micro: 0
+           };
+};
+
+Client.prototype.elapsedToMicro = function(elapsed) {
+  this.tickModel.evaluate(elapsed);
+};
+
+Client.prototype.estimateTickTimeDiff = function() {
+  var diffs = [];
+  var ticks = this.game.ticks;
+
+  if (ticks.length < 2)
+    return { lower: 0, upper: 0 };
+  if (ticks.length < 3) {
+    var t = ticks[1].elapsed - ticks[0].elapsed;
+    return { lower: t, upper: t };
+  }
+  if (ticks.length < 4) {
+    var t1 = ticks[1].elapsed - ticks[0].elapsed;
+    var t2 = ticks[2].elapsed - ticks[1].elapsed;
+
+    return { lower: Math.min(t1,t2),
+             upper: Math.max(t1,t2)
+           };
+  }
+
+  for (var i = 1; i < ticks.length; ++i)
+    diffs.push(ticks[i].elapsed - ticks[i-1].elapsed);
+
+  diffs.sort(function(a,b) { return a - b; });
+  return { lower: diffs[Math.floor(0.05 * diffs.length)],
+           upper: diffs[Math.floor(0.95 * diffs.length)]
+         };
+};
+
+Client.prototype.estimateNextTick = function() {
+  var last = this.getLastTick();
+  var tickdiff = this.estimateTickTimeDiff();
+
+  // Lower estimate
+  var lower_elapsed  = Math.floor(last.elapsed + tickdiff.lower);
+  var lower_tickInfo =
+    { elapsed: lower_elapsed,
+      growth:  Lib.growthFunc(lower_elapsed),
+      micro:   this.elapsedToMicro(lower_elapsed)
+    };
+
+  // Upper estimate
+  var upper_elapsed  = Math.floor(last.elapsed + tickdiff.upper);
+  var upper_tickInfo =
+    { elapsed:    upper_elapsed,
+      growth:     Lib.growthFunc(upper_elapsed),
+      micro:      this.elapsedToMicro(upper_elapsed)
+    };
+
+  return { lower: lower_tickInfo, upper: upper_tickInfo };
+};
+
+Client.prototype.timeTillStart = function() {
+  return this.startTime - Date.now();
+}
+
 Client.prototype.getPlayers = function() {
   return this.game.players;
 };
@@ -341,7 +460,8 @@ Client.prototype.getGameInfo = function() {
       hash:         this.game.hash,
       player_info:  this.game.players,
       state:        this.game.state,
-      tick:         this.game.tick
+      ticks:        this.game.ticks,
+      micro_time:   this.game.microStartTime
     };
 
   if (this.game.state === 'ENDED') {

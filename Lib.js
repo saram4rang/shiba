@@ -26,5 +26,19 @@ module.exports =
     formatFactor:
       function(f) {
         return (f/100).toFixed(2);
+      },
+    duration:
+      function(cp) {
+        return Math.ceil(this.inverseGrowth(cp + 1));
+      },
+    growthFunc:
+      function(ms) {
+        var r = 0.00006;
+        return Math.floor(100 * Math.pow(Math.E, r * ms));
+      },
+    inverseGrowth:
+      function(result) {
+        var c = 16666.66666667;
+        return c * Math.log(0.01 * result);
       }
   };
