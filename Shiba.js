@@ -119,7 +119,8 @@ Shiba.prototype.onSay = function(msg) {
                   /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i,
                   /strongbank\.biz\/\?.*ref=.*/i,
                   /satoshimines\.com\/a\/[^\s]+/i,
-                  /hashprofit.com\/.*\?.*hp=[0-9]*/i
+                  /hashprofit\.com\/.*\?.*hp=[0-9]*/i,
+                  /coins-miners\.com\/.*\?.*owner=[0-9]*/i
                 ];
 
   // Match entire message against the regular expressions.
