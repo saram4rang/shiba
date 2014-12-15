@@ -11,17 +11,29 @@ function Blockchain() {
   this.pingTimeoutTimer  = null;
   this.pingTimeout       = 5000;
   this.pingIntervalTimer = null;
-  this.pingInterval      = 30000;
-  this.reconnectInterval = 30000;
+  this.pingInterval      = 45000;
+  this.reconnectInterval = 60000;
   this.doConnect();
 }
 
 util.inherits(Blockchain, Events.EventEmitter);
 
+Blockchain.prototype.doScheduleConnect = function() {
+  debug('Reconnecting in %d ms.', this.reconnectInterval);
+  setTimeout(this.doConnect.bind(this), this.reconnectInterval);
+
+  clearTimeout(this.pingIntervalTimer);
+  clearTimeout(this.pingTimeoutTimer);
+  if (this.socket) {
+    this.socket.removeAllListeners();
+    this.socket = null;
+  }
+};
+
 Blockchain.prototype.doConnect = function() {
   debug('Connecting to Blockchain API.');
   var self = this;
-  var socket = new WebSocket('ws://ws.blockchain.info/inv');
+  var socket = new WebSocket('wss://ws.blockchain.info/inv');
   socket.on('error', self.onError.bind(self));
   socket.on('open', function() {
     self.socket = socket;
@@ -65,17 +77,15 @@ Blockchain.prototype.onMessage = function(message, flags) {
 };
 
 Blockchain.prototype.onError = function(error) {
-  if (error) return console.error(error);
+  if (error) {
+    debug('Connection error: ' + error);
+    this.doScheduleConnect();
+  }
 };
 
 Blockchain.prototype.onClose = function(code, message) {
-  debug('Connection closed. Reconnecting in %d ms.', this.reconnectInterval);
-  setTimeout(this.doConnect.bind(this), this.reconnectInterval);
-
-  clearTimeout(this.pingIntervalTimer);
-  clearTimeout(this.pingTimeoutTimer);
-  this.socket.removeAllListeners();
-  this.socket = null;
+  debug('Connection closed with code %s: %s.', JSON.stringify(code), message);
+  this.doScheduleConnect();
   this.emit('disconnect');
 };
 
