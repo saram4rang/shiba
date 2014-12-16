@@ -344,14 +344,31 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
 
       if (currency === 'btc') {
         usd    = amount * price;
+        eur    = fx.convert(usd, {from: "USD", to: "EUR"});
         amount *= 1000000;
         if (modifier === 'k' || modifier === 'K') {
           amount *= 1000;
           usd *= 1000;
         }
-        self.client.doSay(conv + ' is ' + amount + ' Bit ' + usd + ' USD');
+        self.client.doSay(conv + ' is ' + amount + ' Bit ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
+      } else if (currency === 'eur') {
+        var usdAmount = fx.convert(amount, {from: "EUR", to: "USD"});
+        var btcAmount = usdAmount / price;
+        var bitAmount = btcAmount * 1000000;
+
+        if (modifier === 'k' || modifier === 'K') {
+          btcAmount *= 1000;
+          bitAmount *= 1000;
+        }
+        
+        btcAmount = btcAmount.toFixed(8);
+        bitAmount = bitAmount.toFixed(2);
+
+        self.client.doSay(conv + ' is ' + bitAmount + ' bit(s) ' + '(' + btcAmount + ' BTC' + ')');
+        }
       } else if (currency === 'bits' || currency === 'bit') {
         usd = amount * price;
+        eur    = fx.convert(usd, {from: "USD", to: "EUR"});
         if (modifier === 'k' || modifier === 'K') {
           amount /= 1000;
           usd /= 1000;
@@ -362,7 +379,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
         }
         amount = amount.toFixed(8);
         amount = amount.replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + amount + ' BTC ' + usd + ' USD');
+        self.client.doSay(conv + ' is ' + amount + ' BTC ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
       } else if (currency === 'usd') {
         var usdAmount = amount;
         var btcAmount = usdAmount / price;
@@ -380,7 +397,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
       }
     });
   } else {
-    self.client.doSay('usage: !convert <number>k? (btc|bit[s]|usd)');
+    self.client.doSay('usage: !convert <number>k? (btc|bit[s]|usd|eur)');
   }
 };
 
