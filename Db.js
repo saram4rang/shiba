@@ -1,5 +1,6 @@
 
 var levelup = require('levelup');
+var debug   = require('debug')('shiba:db');
 
 var dbOptions =
     { createIfMissing: true,
@@ -11,7 +12,8 @@ var db = levelup('shiba.db', dbOptions);
 
 function get(key, cb) {
     db.get(key, function(err, value) {
-        if (err) console.error("Getting '%s' failed: %s", key, err);
+        if (err)
+          console.error("Getting '%s' failed: %s", key, JSON.stringify(err));
         cb(err, value);
     });
 }

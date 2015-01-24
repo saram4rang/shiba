@@ -60,6 +60,8 @@ function Client(config) {
   this.username  = null;
   this.balance   = null;
   this.game      = null;
+
+  /** A linear regression model to estimate tick times. */
   this.tickModel = null;
 
   this.gameHistory = [];
@@ -116,6 +118,64 @@ Client.prototype.onDisconnect = function(data) {
 };
 
 Client.prototype.onJoin = function(data) {
+  /* Example 1:
+       { "state" : "IN_PROGRESS",
+         "player_info" : { "Steve" : {"bet":500000},
+                           "Shiba" : {"bet":21600,"stopped_at":103}
+                         },
+         "game_id":1023470,
+         "last_hash":"c7a6e51b81d78bc3f01996cf76cd64aea3cb5b7fcdea65d28f3d16c3f7622081",
+         "max_win":183474675.81,
+         "elapsed":3597,
+         "created":"2015-01-23T22:44:06.093Z",
+         "joined":[],
+         "chat":[ {"time":"2015-01-23T21:59:08.405Z",
+                   "type":"say",
+                   "username":"Steve",
+                   "role":"user",
+                   "message":"Hi"},
+                  {"time":"2015-01-23T22:04:46.586Z",
+                   "type":"say",
+                   "username":"Ryan",
+                   "role":"admin",
+                   "message":"Hi"
+                  },
+                  {"time":"2015-01-23T22:04:59.297Z",
+                   "type":"say",
+                   "username":"Shiba",
+                   "role":"moderator",
+                   "message":"*bark*"
+                  }
+                ]
+         "table_history": [ {"game_id":1023469,
+                             "game_crash":0,
+                             "created":"2015-01-23T22:43:58.025Z",
+                             "player_info": {"Steve": {"bet":500000},
+                                             "Shiba":{"bet":188600}
+                                            },
+                             "hash":"c7a6e51b81d78bc3f01996cf76cd64aea3cb5b7fcdea65d28f3d16c3f7622081"
+                            }
+                          ],
+         "username":Steve,
+         "balance_satoshis":133700
+       }
+
+     Example 2:
+       { "state":"STARTING",
+         "player_info":{},
+         "game_id":1024781,
+         "last_hash":"f0081ce965e0d8614e2c042310db60d725d98dfd8b1934aec6d35de369bd4347",
+         "max_win":112105971.33,
+         "elapsed":-1434,
+         "created":"2015-01-24T07:48:46.261Z",
+         "joined":["Steve","Shiba"],
+         "chat":[],
+         "table_history": [],
+         "username":null,
+         "balance_satoshis":null
+       }
+  */
+
   var copy =
     { state:        data.state,
       game_id:      data.game_id,
@@ -143,14 +203,8 @@ Client.prototype.onJoin = function(data) {
       forced:          null
     };
 
-  // TODO: Cleanup after server upgrade
-  if (data.hasOwnProperty('player_info')) {
-    this.game.players = data.player_info;
-  }
-  if (data.hasOwnProperty('joined')) {
-    for (var i = 0; i < data.joined.length; ++i) {
-      this.game.players[data.joined[i]] = {};
-    }
+  for (var i = 0; i < data.joined.length; ++i) {
+    this.game.players[data.joined[i]] = {};
   }
 
   if (data.state === 'IN_PROGRESS') {
@@ -185,6 +239,13 @@ Client.prototype.onJoin = function(data) {
 };
 
 Client.prototype.onGameStarting = function(data) {
+  /* Example:
+       { "game_id":1000020,
+         "max_win":150000000,
+         "time_till_start":5000
+       }
+  */
+
   debuggame('Game #%d starting', data.game_id);
   this.game =
     { id:              data.game_id,
@@ -274,6 +335,18 @@ Client.prototype.onGameTick = function(data) {
 };
 
 Client.prototype.onGameCrash = function(data) {
+
+  /* Example:
+       { "forced":false,
+         "elapsed":0,
+         "game_crash":0,
+         "bonuses":{"Steve":42,
+                    "Shiba":1337
+                   },
+         "hash":"20c8a18be0fb4d4529b661938350bfbea3ed822c4dc83e764a079efa14ec9af9"
+       }
+  */
+
   var crash = Lib.formatFactor(data.game_crash);
   debuggame('Game #%d crashed @%sx', this.game.id, crash);
   this.lastServerSeed  = data.hash;
@@ -323,18 +396,24 @@ Client.prototype.onPlayerBet = function(data) {
 };
 
 Client.prototype.onCashedOut = function(data) {
+  /* Example:
+       { "username":"Steve",
+         "stopped_at":2097
+       }
+  */
+
   console.assert(this.game.players[data.username]);
   var player = this.game.players[data.username];
   player.stopped_at = data.stopped_at;
 
   if (this.username === data.username) {
     debuguser('User cashout @%d: PLAYING -> CASHEDOUT', data.stopped_at);
-    this.balance += this.game.players[data.username].bet * data.stopped_at / 100;
+    this.balance += player.bet * data.stopped_at / 100;
     this.userState = 'CASHEDOUT';
     this.emit('cashed_out', data);
     this.emit('user_cashed_out', data);
   } else {
-    debuggame('Player cashout @%d', data.stopped_at);
+    debuggame('Player cashout @%d: %s', data.stopped_at, data.username);
     this.emit('cashed_out', data);
   }
 };

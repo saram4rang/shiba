@@ -21,7 +21,7 @@ function Shiba() {
 
   this.setupUsernameScrape();
   this.setupConsoleLog();
-  this.setupLossStreakComment();
+  // this.setupLossStreakComment();
   this.setupScamComment();
   this.setupBlockchain();
 }
@@ -76,7 +76,6 @@ Shiba.prototype.setupLossStreakComment = function() {
     if (streak) self.client.doSay("wow. such rape. very butthurt");
   });
 };
-
 
 Shiba.prototype.setupScamComment = function() {
   var self = this;
@@ -356,7 +355,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
           btcAmount *= 1000;
           bitAmount *= 1000;
         }
-        
+
         btcAmount = btcAmount.toFixed(8);
         bitAmount = bitAmount.toFixed(2);
 
