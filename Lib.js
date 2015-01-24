@@ -40,5 +40,33 @@ module.exports =
       function(result) {
         var c = 16666.66666667;
         return c * Math.log(0.01 * result);
+      },
+    divisible:
+      function(hash, mod) {
+        /* Reduce the hash digit by digit to stay in the signed 32-bit integer range. */
+        var val = hash.split('').reduce(function(r,d) {
+          return ((r << 4) + parseInt(d,16)) % mod ; }, 0);
+        return val === 0;
+      },
+    clientSeed:
+      '000000000000000007a9a31ff7f07463d91af6b5454241d5faf282e5e0fe1b3a',
+    crashPoint:
+      function(serverSeed) {
+        console.assert(typeof serverSeed === 'string');
+        var hash =
+          crypto
+            .createHmac('sha256', serverSeed)
+            .update(this.clientSeed)
+            .digest('hex');
+
+        // In 1 of 101 games the game crashes instantly.
+        if (this.divisible(hash, 101))
+          return 0;
+
+        // Use the most significant 52-bit from the hash to calculate the crash point
+        var h = parseInt(hash.slice(0,52/4),16);
+        var e = Math.pow(2,52);
+
+        return Math.floor((100 * e - h) / (e - h));
       }
   };

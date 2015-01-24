@@ -44,7 +44,7 @@ Shiba.prototype.setupConsoleLog = function() {
   self.client.on('game_starting', function(info) {
     var line =
         "Starting " + info.game_id +
-        " " + info.hash.substring(0,8);
+        " " + info.server_seed_hash.substring(0,8);
     process.stdout.write(line);
   });
 

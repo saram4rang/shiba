@@ -51,6 +51,12 @@ function Client(config) {
    *    before the game crashed.
    */
   this.userState = null;
+
+  /** This will always be the last server seed that we received. It is
+   *  set on joining the game and on the game_crash event.
+   */
+  this.lastServerSeed = null;
+
   this.username  = null;
   this.balance   = null;
   this.game      = null;
@@ -113,7 +119,7 @@ Client.prototype.onJoin = function(data) {
   var copy =
     { state:        data.state,
       game_id:      data.game_id,
-      hash:         data.hash,
+      last_hash:    data.last_hash,
       elapsed:      data.elapsed,
       username:     data.username,
       balance:      data.balance_satoshis
@@ -121,10 +127,11 @@ Client.prototype.onJoin = function(data) {
 
   debug('Resetting client state\n%s', JSON.stringify(copy, null, ' '));
 
-  this.gameHistory = data.table_history;
+  this.gameHistory    = data.table_history;
+  this.lastServerSeed = data.last_hash;
   this.game =
     { id:              data.game_id,
-      hash:            data.hash,
+      serverSeedHash:  data.last_hash,
       players:         data.player_info,
       state:           data.state,
       startTime:       new Date(data.created),
@@ -132,7 +139,8 @@ Client.prototype.onJoin = function(data) {
       ticks:           [],
       // Valid after crashed
       crashpoint:      null,
-      seed:            null
+      serverSeed:      null,
+      forced:          null
     };
 
   // TODO: Cleanup after server upgrade
@@ -180,7 +188,8 @@ Client.prototype.onGameStarting = function(data) {
   debuggame('Game #%d starting', data.game_id);
   this.game =
     { id:              data.game_id,
-      hash:            data.hash,
+      // The server seed hash is always the seed of the previous games.
+      serverSeedHash:  this.lastServerSeed,
       players:         {},
       state:           'STARTING',
       startTime:       new Date(Date.now() + data.time_till_start),
@@ -188,10 +197,14 @@ Client.prototype.onGameStarting = function(data) {
       ticks:           [],
       // Valid after crashed
       crashpoint:      null,
-      seed:            null
+      serverSeed:      null,
+      forced:          null
     };
 
   this.userState = 'WATCHING';
+
+  // We additionally add the server seed hash here.
+  data.server_seed_hash = this.game.serverSeedHash;
   this.emit('game_starting', data);
 };
 
@@ -263,8 +276,10 @@ Client.prototype.onGameTick = function(data) {
 Client.prototype.onGameCrash = function(data) {
   var crash = Lib.formatFactor(data.game_crash);
   debuggame('Game #%d crashed @%sx', this.game.id, crash);
-  this.game.seed       = data.seed;
+  this.lastServerSeed  = data.hash;
+  this.game.serverSeed = data.hash;
   this.game.crashPoint = data.game_crash;
+  this.game.forced     = data.forced;
   this.game.state      = 'ENDED';
 
   // Add the bonus to each user that wins it
@@ -455,21 +470,27 @@ Client.prototype.getPlayers = function() {
 
 Client.prototype.getGameInfo = function() {
   var gameInfo =
-    { elapsed:      Date.now() - this.game.startTime,
-      game_id:      this.game.id,
-      hash:         this.game.hash,
-      player_info:  this.game.players,
-      state:        this.game.state,
-      ticks:        this.game.ticks,
-      micro_time:   this.game.microStartTime
+    { elapsed:          Date.now() - this.game.startTime,
+      game_id:          this.game.id,
+      server_seed_hash: this.game.serverSeedHash,
+      player_info:      this.game.players,
+      state:            this.game.state,
+      ticks:            this.game.ticks,
+      micro_time:       this.game.microStartTime
     };
 
   if (this.game.state === 'ENDED') {
-    var hash = Lib.sha256(this.game.crashPoint + '|' + this.game.seed);
+    var cp   = Lib.crashPoint(this.game.serverSeed);
+    var diff = Math.abs(cp - this.game.crashPoint);
 
-    gameInfo.game_crash = this.game.crashPoint;
-    gameInfo.seed       = this.game.seed;
-    gameInfo.verified   = this.game.hash === hash ? "ok" : "scam";
+    gameInfo.game_crash  = this.game.crashPoint;
+    gameInfo.server_seed = this.game.serverSeed;
+
+    // The crashpoint calculation is a floating point calculation and as such
+    // is imprecise. Above 1,000,000x we allow the crashpoint to differ by
+    // 0.08x, below it must be equal.
+    gameInfo.verified    =
+      diff === 0 || cp > 1e6 && diff < 0.08 ? "ok" : "scam";
   }
 
   return gameInfo;
