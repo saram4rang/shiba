@@ -118,8 +118,25 @@ Shiba.prototype.onSay = function(msg) {
                   /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i,
                   /strongbank\.biz\/\?.*ref=.*/i,
                   /satoshimines\.com\/a\/[^\s]+/i,
-                  /hashprofit\.com\/.*\?.*hp=[0-9]*/i,
-                  /coins-miners\.com\/.*\?.*owner=[0-9]*/i
+                  /hashprofit\.com\/.*\?.*hp=[0-9]+/i,
+                  /coins-miners\.com\/.*\?.*owner=[0-9]+/i,
+                  /coinichiwa\.com\/a\/[0-9]+/i,
+                  /2fxltd\.com[^\s]*ref=.+/i,
+                  /bitwheel\.io\/ref\/\?[0-9]+/i,
+                  /primedice\.com[^\s]*ref=.+/i,
+                  /yabtcl\.com[^\s]*ref=[0-9]+/i,
+                  /win88\.me\/usr\/[0-9]+/i,
+                  /eobot\.com\/user\/[0-9]+/i,
+                  /coincheckin\.com[^\s]*r=.+/i,
+                  /eobot\.com\/user\/[0-9]+/i,
+                  /bitcoin-bucket\.com[^\s]*a=.*/i,
+                  /xapo\.com\/r\/.*/i,
+                  /gudangreceh\.com[^\s]*ref=.+/i,
+                  /bitcasino\.io[^\s]*ref=.+/i,
+                  /itcoin\.biz\/[^\s]+/i,
+                  /bitcostars\.com[^\s]*Referrer=[0-9]+/i,
+                  /999dice\.com\/\?[0-9]+/i,
+                  /thecoins\.net\/[^\s]*site\/ref/i
                 ];
 
   // Match entire message against the regular expressions.
