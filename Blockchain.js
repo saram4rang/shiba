@@ -59,18 +59,22 @@ Blockchain.prototype.onOpen = function() {
 
 
 Blockchain.prototype.onMessage = function(message, flags) {
-  var data = JSON.parse(message);
-  debug("Op received: '%s'.", data.op);
+  try {
+    var data = JSON.parse(message);
+    debug("Op received: '%s'.", data.op);
 
-  switch (data.op) {
-  case 'status':
-    debug('Status %s', message);
-    break;
-  case 'block':
-    var block = data.x;
-    debug('New block #%d, time %d.', block.height, block.time);
-    this.emit('block', block);
-    break;
+    switch (data.op) {
+    case 'status':
+      debug('Status %s', message);
+      break;
+    case 'block':
+      var block = data.x;
+      debug('New block #%d, time %d.', block.height, block.time);
+      this.emit('block', block);
+      break;
+    }
+  } catch (e) {
+    debug("Error while decoding message: %s", e);
   }
 
   this.resetPingTimer();

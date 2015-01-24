@@ -14,7 +14,12 @@ function getTicker(cb) {
   var req = https.request(options, function(res) {
     res.on('data', function (data) {
       debug('Received ticker data: ' + data);
-      cb(null, JSON.parse(data));
+      try {
+        var ticker = JSON.parse(data);
+        return cb(null, ticker);
+      } catch(err) {
+        return cb(err);
+      }
     });
   });
   req.end();
