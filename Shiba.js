@@ -1,8 +1,9 @@
 var fs           =  require('fs');
 var async        =  require('async');
 var unshort      =  require('unshort');
+var fx           =  require('money');
 var profanity    =  require('./profanity');
-var Bitstamp     =  require('./Bitstamp');
+var ExchangeRate =  require('./ExchangeRate');
 var Blockchain   =  require('./Blockchain');
 
 var Client       =  require('./Client');
@@ -335,7 +336,11 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
   debug('Convert matching: ' + JSON.stringify(convMatch));
 
   if (convMatch) {
-    Bitstamp.getAveragePrice(function(err, price) {
+    ExchangeRate.getRates(function(err, rates) {
+
+      if (err) return self.client.doSay('wow. such exchange rate fail');
+      fx.rates = rates;
+      price = fx.convert(1, {from: "BTC", to: "USD"});
 
       var amount   = parseFloat(convMatch[1], 10);
       var modifier = convMatch[3];
@@ -360,12 +365,11 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
           btcAmount *= 1000;
           bitAmount *= 1000;
         }
-        
+
         btcAmount = btcAmount.toFixed(8);
         bitAmount = bitAmount.toFixed(2);
 
         self.client.doSay(conv + ' is ' + bitAmount + ' bit(s) ' + '(' + btcAmount + ' BTC' + ')');
-        }
       } else if (currency === 'bits' || currency === 'bit') {
         usd = amount * price;
         eur    = fx.convert(usd, {from: "USD", to: "EUR"});

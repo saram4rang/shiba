@@ -10,20 +10,22 @@
     "url"  : "https://github.com/kungfuant/shiba.git"
   },
   "dependencies": {
-    "async":            "^0.9.0",
-    "async-cache":      "~0.1.5",
-    "crypto-js":        "~3.1.2-5",
-    "debug":            "^2.1.0",
-    "leveldown":        "~0.10.0",
-    "levelup":          "~0.19.0",
-    "lodash":           "^2.4.1",
-    "microtime":        "~1.0.1",
-    "requirejs":        "~2.1.15",
-    "socket.io-client": "^1.2.0",
-    "unshort":          "^0.0.4",
-    "ws":               "~0.4.32"
+    "async":               "^0.9.0",
+    "async-cache":         "~0.1.5",
+    "crypto-js":           "~3.1.2-5",
+    "debug":               "^2.1.0",
+    "leveldown":           "~0.10.0",
+    "levelup":             "~0.19.0",
+    "lodash":              "^2.4.1",
+    "microtime":           "~1.0.1",
+    "money":               "~0.2.0",
+    "open-exchange-rates": "^0.3.0",
+    "requirejs":           "~2.1.15",
+    "socket.io-client":    "^1.2.0",
+    "unshort":             "^0.0.4",
+    "ws":                  "~0.4.32"
   },
   "scripts": {
-    "start": "node Shiba.js --use_strict"
+    "start": "node Shiba.js"
   }
 }
