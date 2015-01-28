@@ -345,59 +345,40 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
       var amount   = parseFloat(convMatch[1], 10);
       var modifier = convMatch[3];
       var currency = convMatch[4].toLowerCase();
-      var usd;
+      var btc, bit, eur, usd;
+
+      if (modifier === 'k' || modifier === 'K') {
+        amount *= 1000;
+      }
 
       if (currency === 'btc') {
-        usd    = amount * price;
-        eur    = fx.convert(usd, {from: "USD", to: "EUR"});
-        amount *= 1000000;
-        if (modifier === 'k' || modifier === 'K') {
-          amount *= 1000;
-          usd *= 1000;
-        }
-        self.client.doSay(conv + ' is ' + amount + ' Bit ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
+        usd = fx.convert(amount, {from: "BTC", to: "USD"});
+        eur = fx.convert(amount, {from: "BTC", to: "EUR"});
+        bit = fx.convert(amount, {from: "BTC", to: "BIT"});
+        usd = usd.toFixed(2).replace(/\.0*$|0*$/,'');
+        eur = eur.toFixed(2).replace(/\.0*$|0*$/,'');
+        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
+        self.client.doSay(conv + ' is ' + bit + ' Bit ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
       } else if (currency === 'eur') {
-        var usdAmount = fx.convert(amount, {from: "EUR", to: "USD"});
-        var btcAmount = usdAmount / price;
-        var bitAmount = btcAmount * 1000000;
-
-        if (modifier === 'k' || modifier === 'K') {
-          btcAmount *= 1000;
-          bitAmount *= 1000;
-        }
-
-        btcAmount = btcAmount.toFixed(8);
-        bitAmount = bitAmount.toFixed(2);
-
-        self.client.doSay(conv + ' is ' + bitAmount + ' bit(s) ' + '(' + btcAmount + ' BTC' + ')');
+        btc = fx.convert(amount, {from: "EUR", to: "BTC"});
+        bit = fx.convert(amount, {from: "EUR", to: "BIT"});
+        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
+        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
+        self.client.doSay(conv + ' is ' + bit + ' bit(s) ' + '(' + btc + ' BTC' + ')');
       } else if (currency === 'bits' || currency === 'bit') {
-        usd = amount * price;
-        eur    = fx.convert(usd, {from: "USD", to: "EUR"});
-        if (modifier === 'k' || modifier === 'K') {
-          amount /= 1000;
-          usd /= 1000;
-        }
-        else {
-          amount /= 1000000;
-          usd /= 1000000;
-        }
-        amount = amount.toFixed(8);
-        amount = amount.replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + amount + ' BTC ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
+        usd = fx.convert(amount, {from: "BIT", to: "USD"});
+        eur = fx.convert(amount, {from: "BIT", to: "EUR"});
+        btc = fx.convert(amount, {from: "BIT", to: "BTC"});
+        usd = usd.toFixed(6).replace(/\.0*$|0*$/,'');
+        eur = eur.toFixed(6).replace(/\.0*$|0*$/,'');
+        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
+        self.client.doSay(conv + ' is ' + btc + ' BTC ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
       } else if (currency === 'usd') {
-        var usdAmount = amount;
-        var btcAmount = usdAmount / price;
-        var bitAmount = btcAmount * 1000000;
-
-        if (modifier === 'k' || modifier === 'K') {
-          btcAmount *= 1000;
-          bitAmount *= 1000;
-        }
-
-        btcAmount = btcAmount.toFixed(8);
-        bitAmount = bitAmount.toFixed(2);
-
-        self.client.doSay(conv + ' is ' + bitAmount + ' bit(s) ' + '(' + btcAmount + ' BTC' + ')');
+        btc = fx.convert(amount, {from: "USD", to: "BTC"});
+        bit = fx.convert(amount, {from: "USD", to: "BIT"});
+        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
+        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
+        self.client.doSay(conv + ' is ' + bit + ' bit(s) ' + '(' + btc + ' BTC' + ')');
       }
     });
   } else {
