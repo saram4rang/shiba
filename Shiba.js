@@ -137,13 +137,14 @@ Shiba.prototype.onSay = function(msg) {
                   /itcoin\.biz\/[^\s]+/i,
                   /bitcostars\.com[^\s]*Referrer=[0-9]+/i,
                   /999dice\.com\/\?[0-9]+/i,
-                  /thecoins\.net\/[^\s]*site\/ref/i
+                  /thecoins\.net\/[^\s]*site\/ref/i,
+                  /motherfaucet\.com[^\s]*r=[0-9a-z]+/i
                 ];
 
   // Match entire message against the regular expressions.
   for (var r = 0; r < regexs.length; ++r)
     if (msg.message.match(regexs[r]))
-      return this.client.doMute(msg.username, '6h');
+      return this.client.doMute(msg.username, '12h');
 
   // Extract a list of URLs.
   // TODO: The regular expression could be made more intelligent.
@@ -187,7 +188,7 @@ Shiba.prototype.onSay = function(msg) {
       for (var r = 0; r < regexs.length; ++r)
         if (url.match(regexs[r])) {
           debugunshort('URL matched ' + regexs[r]);
-          return self.client.doMute(msg.username, '24h');
+          return self.client.doMute(msg.username, '48h');
         }
     }
 
