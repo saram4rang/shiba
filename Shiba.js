@@ -138,7 +138,9 @@ Shiba.prototype.onSay = function(msg) {
                   /bitcostars\.com[^\s]*Referrer=[0-9]+/i,
                   /999dice\.com\/\?[0-9]+/i,
                   /thecoins\.net\/[^\s]*site\/ref/i,
-                  /motherfaucet\.com[^\s]*r=[0-9a-z]+/i
+                  /motherfaucet\.com[^\s]*r=[0-9a-z]+/i,
+                  /cointellect\.com[^\s]*code=[0-9a-z]+/i,
+                  /cointellect\.ee[^\s]*code=[0-9a-z]+/i
                 ];
 
   // Match entire message against the regular expressions.
