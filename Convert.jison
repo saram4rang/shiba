@@ -41,7 +41,7 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       /* Previous metals*/
       "GOLD"|"SILVER"|
       /* Additional cryptocurrency codes. */
-      "BITS"|"BIT"|"SATOSHI"|"SAT"
+      "BITS"|"BIT"|"SATOSHI"|"SAT"|"CLAM"|"DOGE"|"LTC"|"RDD"
 
 /* Currency signs. Currently doesn't include "¥" because it could
  * stand for either CNY or JPY. */

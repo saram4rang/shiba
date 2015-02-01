@@ -5,7 +5,8 @@ var oxr        = require('open-exchange-rates');
 var debug      = require('debug')('shiba:exchangerate');
 
 var Bitstamp   = require('./Bitstamp');
-var Config     =  require('./Config')();
+var Poloniex   = require('./Poloniex');
+var Config     = require('./Config')();
 
 // Oxr free plan only allows USD as the base currency.
 oxr.base = 'USD';
@@ -29,6 +30,7 @@ function getFiatRates(cb) {
 }
 
 exports.getRates = function(cb) {
+  debug('Getting rates');
   async.parallel(
     [ getFiatRates,
       Bitstamp.getAveragePrice
@@ -37,14 +39,25 @@ exports.getRates = function(cb) {
       if (err) return cb(err);
 
       var rates  = val[0];
-      var btcusd = val[1];
+      var usdBtc = val[1];
       // Interestingly oxr provides us with a Bitcoin price from the
       // Coindesk Price Index. However, the oxr free plan only gives
       // us hourly updated rates. We use the realtime Bitstamp price
       // to be more up to date in this case.
-      rates.BTC = 1   / btcusd;
-      rates.BIT = 1e6 / btcusd;
-      rates.SAT = 1e8 / btcusd;
+      rates.BTC = 1   / usdBtc;
+      rates.BIT = 1e6 / usdBtc;
+      rates.SAT = 1e8 / usdBtc;
+
+      function importpolo(sym) {
+        var ticker = Poloniex.ticker["BTC_" + sym];
+        var avg    = (ticker.lowestAsk + ticker.highestBid) / 2;
+        rates[sym] = 1 / (usdBtc * avg);
+      }
+
+      importpolo('CLAM');
+      importpolo('DOGE');
+      importpolo('LTC');
+      importpolo('RDD');
 
       return cb(null, rates);
     });
