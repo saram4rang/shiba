@@ -421,7 +421,9 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
       result = Math.round(result / Math.pow(10, e-5));
       /* Make sure that the exponent is positive during rescaling. */
       result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
-      result = result.toFixed(Math.max(0, 5-e)).replace(/\.0*$|0*$/,'');
+      result = result.toFixed(Math.max(0, 5-e));
+      /* Remove unnecessary zeroes. */
+      result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
       var prettyResult = pretty(conv.toiso, result, conv.tomod);
 
       /* Send everything to the chat. */
