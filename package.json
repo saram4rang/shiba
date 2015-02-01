@@ -25,7 +25,11 @@
     "unshort":             "^0.0.4",
     "ws":                  "~0.4.32"
   },
+  "devDependencies": {
+    "jison": "^0.4.15"
+  },
   "scripts": {
-    "start": "node Shiba.js"
+    "start": "node Shiba.js",
+    "build": "jison -p lr Convert.jison"
   }
 }

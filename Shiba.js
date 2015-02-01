@@ -7,6 +7,7 @@ var ExchangeRate =  require('./ExchangeRate');
 var Blockchain   =  require('./Blockchain');
 
 var Client       =  require('./Client');
+var Convert      =  require('./Convert');
 var Lib          =  require('./Lib');
 var Db           =  require('./Db');
 var Config       =  require('./Config')();
@@ -334,58 +335,100 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
 Shiba.prototype.onCmdConvert = function(msg, conv) {
   var self = this;
   conv = conv.replace(/^\s+|\s+$/g,'');
-  var convReg = /^((-|\+)?[0-9]*\.?[0-9]*)(k?)\s*(bits?|btc|usd|eur)$/i;
-  var convMatch = conv.match(convReg);
-  debug('Convert matching: ' + JSON.stringify(convMatch));
 
-  if (convMatch) {
+  try {
+    conv = Convert.parser.parse(conv);
+    debug('Convert parse result: ' + JSON.stringify(conv));
+
     ExchangeRate.getRates(function(err, rates) {
-
       if (err) return self.client.doSay('wow. such exchange rate fail');
+
+      function modFactor(mod) {
+        switch(mod) {
+        case 'm':
+          return 1e-3;
+        case 'k':
+        case 'K':
+          return 1e3;
+        case 'M':
+          return 1e6;
+        default:
+          return 1;
+        }
+      }
+
+      /* Pretty print an amount. We try to make it as pretty as
+         possible by replacing ISO codes with currency symbols.
+      */
+      function pretty(iso, num, mod) {
+        switch (iso) {
+        case 'EUR': return "€"   + num + mod;
+        case 'GBP': return "£"   + num + mod;
+        case 'IDR': return "Rp " + num + mod;
+        case 'INR': return "₹"   + num + mod;
+        case 'USD': return "$"   + num + mod;
+        case 'BIT': return num == 1 && mod == '' ? "1 Bit" : num + mod + " Bits";
+        case 'SAT': return num + mod + " satoshi";
+        /* Use suffix symbols for these if no modifier is
+         * provided. Otherwise use the ISO code. */
+        case 'PLN':
+          if (modFactor(mod) == 1) {
+            return num + 'zł'
+          } else {
+            return num + mod + ' PLN';
+          }
+        case 'VND':
+          if (modFactor(mod) == 1) {
+            return num + '₫'
+          } else {
+            return num + mod + ' VND';
+          }
+        case 'XAG':
+          if (modFactor(mod) == 1) {
+            return num + ' oz. tr. of silver'
+          } else {
+            return num + mod + ' XAG';
+          }
+        case 'XAU':
+          if (modFactor(mod) == 1) {
+            return num + ' oz. tr. of gold'
+          } else {
+            return num + mod + ' XAU';
+          }
+        default:
+          return num + mod + " " + iso;
+        }
+      }
+
       fx.rates = rates;
-      price = fx.convert(1, {from: "BTC", to: "USD"});
+      var result = fx.convert(conv.amount, {from: conv.fromiso, to: conv.toiso});
+      result *= modFactor(conv.frommod);
+      result /= modFactor(conv.tomod);
 
-      var amount   = parseFloat(convMatch[1], 10);
-      var modifier = convMatch[3];
-      var currency = convMatch[4].toLowerCase();
-      var btc, bit, eur, usd;
+      /* Pretty print source. We reuse the original amount string for
+         grouping.
+      */
+      var prettySource = pretty(conv.fromiso, conv.str, conv.frommod);
 
-      if (modifier === 'k' || modifier === 'K') {
-        amount *= 1000;
-      }
+      /* Pretty print the converted amount. */
+      /* We strip off some places because they only clutter the output:
+            93473434.4234345  ->  93473434
+            0.000243456487    ->  0.00024346
+       */
 
-      if (currency === 'btc') {
-        usd = fx.convert(amount, {from: "BTC", to: "USD"});
-        eur = fx.convert(amount, {from: "BTC", to: "EUR"});
-        bit = fx.convert(amount, {from: "BTC", to: "BIT"});
-        usd = usd.toFixed(2).replace(/\.0*$|0*$/,'');
-        eur = eur.toFixed(2).replace(/\.0*$|0*$/,'');
-        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + bit + ' Bit ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
-      } else if (currency === 'eur') {
-        btc = fx.convert(amount, {from: "EUR", to: "BTC"});
-        bit = fx.convert(amount, {from: "EUR", to: "BIT"});
-        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
-        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + bit + ' bit(s) ' + '(' + btc + ' BTC' + ')');
-      } else if (currency === 'bits' || currency === 'bit') {
-        usd = fx.convert(amount, {from: "BIT", to: "USD"});
-        eur = fx.convert(amount, {from: "BIT", to: "EUR"});
-        btc = fx.convert(amount, {from: "BIT", to: "BTC"});
-        usd = usd.toFixed(6).replace(/\.0*$|0*$/,'');
-        eur = eur.toFixed(6).replace(/\.0*$|0*$/,'');
-        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + btc + ' BTC ' + usd + ' USD ' + '(' + eur + ' EUR' + ')');
-      } else if (currency === 'usd') {
-        btc = fx.convert(amount, {from: "USD", to: "BTC"});
-        bit = fx.convert(amount, {from: "USD", to: "BIT"});
-        btc = btc.toFixed(8).replace(/\.0*$|0*$/,'');
-        bit = bit.toFixed(2).replace(/\.0*$|0*$/,'');
-        self.client.doSay(conv + ' is ' + bit + ' bit(s) ' + '(' + btc + ' BTC' + ')');
-      }
+      /* Scale using the exponent, but not more than 5 integral places. */
+      var e = Math.min(Math.floor(Math.log(result) / Math.log(10)),5);
+      result = Math.round(result / Math.pow(10, e-5));
+      /* Make sure that the exponent is positive during rescaling. */
+      result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
+      result = result.toFixed(Math.max(0, 5-e)).replace(/\.0*$|0*$/,'');
+      var prettyResult = pretty(conv.toiso, result, conv.tomod);
+
+      /* Send everything to the chat. */
+      self.client.doSay(prettySource + " is " + prettyResult);
     });
-  } else {
-    self.client.doSay('usage: !convert <number>k? (btc|bit[s]|usd|eur)');
+  } catch(e) {
+    return self.client.doSay('wow. very usage failure. such retry');
   }
 };
 
