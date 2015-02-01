@@ -120,7 +120,7 @@ function defaultTarget(sym) {
 
 nummod : NUMMOD
   { var m = yytext.match(/([^µmk]*)([µmk])/i);
-    $$ = { num : m[1].replace(',', ''),
+    $$ = { num : m[1].replace(/,/g, ''),
            /* We preserve the original text for printing. */
            str : m[1],
            /* We interpret a minuscule 'm' as million and capitalize
@@ -129,7 +129,7 @@ nummod : NUMMOD
          };
   };
 num : NUM
-  { $$ = { num : Number(yytext.replace(',', '')),
+  { $$ = { num : Number(yytext.replace(/,/g, '')),
            /* We preserve the original text for printing. */
            str: yytext,
            mod: ''

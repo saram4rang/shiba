@@ -85,7 +85,7 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1:
  var m = yytext.match(/([^µmk]*)([µmk])/i);
-    this.$ = { num : m[1].replace(',', ''),
+    this.$ = { num : m[1].replace(/,/g, ''),
            /* We preserve the original text for printing. */
            str : m[1],
            /* We interpret a minuscule 'm' as million and capitalize
@@ -95,7 +95,7 @@ case 1:
   
 break;
 case 2:
- this.$ = { num : Number(yytext.replace(',', '')),
+ this.$ = { num : Number(yytext.replace(/,/g, '')),
            /* We preserve the original text for printing. */
            str: yytext,
            mod: ''
