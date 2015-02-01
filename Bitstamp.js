@@ -11,8 +11,11 @@ var options =
 
 function getTicker(cb) {
   debug('Requesting price ticker');
+  var chunks = [];
   var req = https.request(options, function(res) {
-    res.on('data', function (data) {
+    res.on('data', chunks.push.bind(chunks));
+    res.on('end', function () {
+      var data = chunks.join();
       debug('Received ticker data: ' + data);
       try {
         var ticker = JSON.parse(data);
