@@ -25,8 +25,19 @@ function put(key, val, cb) {
     });
 }
 
+function getWithDefault(key, def, cb) {
+  db.get(key, function(err, value) {
+    if (err) {
+      console.error("Getting '%s' failed: %s", key, JSON.stringify(err));
+      return cb(null, def);
+    } else {
+      cb(err, value);
+    }});
+}
+
 exports.get = get;
 exports.put = put;
+exports.getWithDefault = getWithDefault;
 
 function userKey(user) {
     return 'user/' + user.toLowerCase();

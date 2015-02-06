@@ -2,6 +2,7 @@ var fs           =  require('fs');
 var async        =  require('async');
 var unshort      =  require('unshort');
 var fx           =  require('money');
+var _            =  require('lodash');
 var profanity    =  require('./profanity');
 var ExchangeRate =  require('./ExchangeRate');
 var Blockchain   =  require('./Blockchain');
@@ -13,19 +14,41 @@ var Db           =  require('./Db');
 var Config       =  require('./Config')();
 
 var debug        =  require('debug')('shiba');
+var debugblock   =  require('debug')('shiba:blocknotify');
 var debugunshort =  require('debug')('shiba:unshort');
 
 // Command syntax
 var cmdReg = /^!([a-zA-z]*)\s*(.*)$/i;
 
 function Shiba() {
-  this.client = new Client(Config);
 
-  this.setupUsernameScrape();
-  this.setupConsoleLog();
-  // this.setupLossStreakComment();
-  this.setupScamComment();
-  this.setupBlockchain();
+  var self = this;
+  async.parallel(
+    [ function(cb) {
+        Db.getWithDefault(
+          'block', { height: 1, time: Date.now()}, cb); },
+      function(cb) {
+        Db.getWithDefault(
+          'blockNotifyUsers', [], cb); }
+    ], function (err, val) {
+      // Abort immediately on startup.
+      if (err) throw err;
+
+        // Last received block information.
+      self.block = val[0];
+      // Awkward name for an array that holds names of users which
+      // will be when a new block has been mined.
+      self.blockNotifyUsers = val[1];
+
+      // Connect to the site.
+      self.client = new Client(Config);
+
+      self.setupUsernameScrape();
+      // self.setupConsoleLog();
+      // self.setupLossStreakComment();
+      self.setupScamComment();
+      self.setupBlockchain();
+    });
 }
 
 Shiba.prototype.setupUsernameScrape = function() {
@@ -91,11 +114,28 @@ Shiba.prototype.setupScamComment = function() {
 };
 
 Shiba.prototype.setupBlockchain = function() {
-  var bc = new Blockchain();
+  this.blockchain = new Blockchain();
+  this.blockchain.on('block', this.onBlock.bind(this));
+};
 
-  bc.on('block', function(block) {
+Shiba.prototype.onBlock = function(block) {
+  /* Check if block is indeed new and only signal in this
+     case. This does not work for reorgs and also does not work if
+     Blockchain announces blocks out of order, but screw these
+     cases.
+  */
+  if (block.height > this.block.height) {
+    this.block = block;
     Db.put('block', block);
-  });
+
+    if (this.blockNotifyUsers.length > 0) {
+      var users = this.blockNotifyUsers.join(': ') + ': ';
+      var line = users + 'Block #' + block.height + ' mined.';
+      this.client.doSay(line);
+      this.blockNotifyUsers = [];
+      Db.put('blockNotifyUsers', this.blockNotifyUsers);
+    }
+  }
 };
 
 Shiba.prototype.getChatMessages = function(username, after) {
@@ -434,24 +474,30 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
   }
 };
 
-Shiba.prototype.onCmdBlock = function() {
-  var self = this;
-  Db.get('block', function(err, block) {
-    if (err) return self.client.doSay('wow. such leveldb fail');
+Shiba.prototype.onCmdBlock = function(msg, rest) {
+  var time  = new Date(this.block.time * 1000);
+  var diff  = Date.now() - time;
 
-    var time     = new Date(block.time * 1000);
-    var diff     = Date.now() - time;
+  var line = 'Seen block #' + this.block.height;
+  if (diff < 1000) {
+    line += ' just now.';
+  } else {
+    line += ' ';
+    line += Lib.formatTimeDiff(diff);
+    line += ' ago.';
+  }
 
-    var line = 'Seen block #' + block.height;
-    if (diff < 1000) {
-      line += ' just now.';
-    } else {
-      line += ' ';
-      line += Lib.formatTimeDiff(diff);
-      line += ' ago.';
-    }
-    self.client.doSay(line);
-  });
+  // Add the user to the list of users being notified about a new block.
+  if (_.indexOf(this.blockNotifyUsers, msg.username) < 0) {
+    debugblock("Adding user '%s' to block notfy list", msg.username);
+    this.blockNotifyUsers.push(msg.username);
+    Db.put('blockNotifyUsers', this.blockNotifyUsers);
+  } else {
+    debugblock("User '%s' is already on block notfy list", msg.username);
+    line += ' ' + msg.username + ': Have patience!';
+  }
+
+  this.client.doSay(line);
 };
 
 var shiba = new Shiba();
