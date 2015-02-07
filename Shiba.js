@@ -351,7 +351,7 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
   user = user.replace(/^\s+|\s+$/g,'');
 
   // Special treatment of block.
-  if (user === 'block') return this.onCmdBlock();
+  if (user === 'block') return this.onCmdBlock(msg);
 
   // Avoid this.
   if (user === self.client.username.toLowerCase()) return;
@@ -519,7 +519,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
   }
 };
 
-Shiba.prototype.onCmdBlock = function(msg, rest) {
+Shiba.prototype.onCmdBlock = function(msg) {
   var time  = new Date(this.block.time * 1000);
   var diff  = Date.now() - time;
 
