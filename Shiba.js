@@ -301,8 +301,15 @@ Shiba.prototype.onCmdCustom = function(msg, rest) {
   if (msg.role != 'admin' &&
       msg.role != 'moderator') return;
 
-  var customReg   = /^([A-Za-z0-9]*)\s*(.*)$/;
+  var customReg   = /^([a-z0-9_\-]+)\s+(.*)$/i;
   var customMatch = rest.match(customReg);
+
+  if (!customMatch) {
+    self.client.doSay('wow. very usage failure. such retry');
+    self.client.doSay('so example, very cool: !custom Ryan very dog lover');
+    return;
+  }
+
   var customUser  = customMatch[1];
   var customMsg   = customMatch[2];
   Db.addCustomLickMessage(customUser, customMsg, function (err) {
