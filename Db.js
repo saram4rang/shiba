@@ -90,3 +90,16 @@ exports.updateSeen = function(user, val, cb) {
 exports.getSeen = function(user, cb) {
     get(seenKey(user), cb);
 };
+
+// Crash command
+function crashKey(cp) {
+    return 'crash/' + cp;
+}
+
+exports.updateCrash = function(cp, val, cb) {
+    put(crashKey(cp), val, cb);
+};
+
+exports.getCrash = function(cp, cb) {
+    get(crashKey(cp), cb);
+};

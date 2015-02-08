@@ -43,6 +43,7 @@ function Shiba() {
       // Connect to the site.
       self.client = new Client(Config);
 
+      self.setupGameCrashScrape();
       self.setupUsernameScrape();
       // self.setupConsoleLog();
       // self.setupLossStreakComment();
@@ -50,6 +51,19 @@ function Shiba() {
       self.setupBlockchain();
     });
 }
+
+Shiba.prototype.setupGameCrashScrape = function() {
+  var self = this;
+  self.client.on('game_crash', function(data, info) {
+    // We use the current time, i.e. crash time instead
+    // of the game start time.
+    Db.updateCrash(
+      info.game_crash,
+      { time: Date.now(),
+        game_id: info.game_id
+      });
+  });
+};
 
 Shiba.prototype.setupUsernameScrape = function() {
   var self = this;
@@ -278,6 +292,7 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   case 'seen': this.onCmdSeen(msg, rest); break;
   case 'convert': this.onCmdConvert(msg, rest); break;
   case 'block': this.onCmdBlock(msg, rest); break;
+  case 'crash': this.onCmdCrash(msg, rest); break;
   }
 };
 
@@ -370,6 +385,36 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
 
       self.client.doSay(line);
     });
+};
+
+Shiba.prototype.onCmdCrash = function(msg, rest) {
+  var self = this;
+  rest = rest.replace(/^\s+|\s+$/g,'');
+  var crashRegex = /^(([1-9]\d*)(.[0-9]{0,2})?|0(.0{0,2})?)x?$/i;
+  var crashMatch = rest.match(crashRegex);
+
+  if (!crashMatch) {
+    self.client.doSay('wow. very usage failure. such retry');
+    self.client.doSay('so example, very cool: !crash 1.97');
+    return;
+  }
+
+  var crashPoint = Math.round(parseFloat(crashMatch[1]) * 100);
+
+  Db.getCrash(crashPoint, function(err, data) {
+    if (err) {
+      // Assume that we have never seen this crashpoint.
+      self.client.doSay('wow. such absence. never seen ' + rest);
+    } else {
+      var time = new Date(data.time);
+      var diff = Date.now() - time;
+      var line =
+        'Seen ' + rest +
+        ' in game #' + data.game_id +
+        ' ' + Lib.formatTimeDiff(diff) + ' ago.';
+      self.client.doSay(line);
+    }
+  });
 };
 
 Shiba.prototype.onCmdConvert = function(msg, conv) {
