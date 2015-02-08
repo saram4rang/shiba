@@ -408,10 +408,13 @@ Shiba.prototype.onCmdCrash = function(msg, rest) {
     } else {
       var time = new Date(data.time);
       var diff = Date.now() - time;
+      var info = self.client.getGameInfo();
       var line =
-        'Seen ' + rest +
-        ' in game #' + data.game_id +
-        ' ' + Lib.formatTimeDiff(diff) + ' ago.';
+        'Seen ' + crashMatch[1] +
+        'x in game #' +  data.game_id +
+        '. ' + (info.game_id - data.game_id) +
+        ' games ago (' + Lib.formatTimeDiff(diff) +
+        ')';
       self.client.doSay(line);
     }
   });
