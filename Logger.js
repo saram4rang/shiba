@@ -2,6 +2,7 @@ var fs           =  require('fs');
 
 var Client       =  require('./Client');
 var Lib          =  require('./Lib');
+var Pg           =  require('./Pg');
 var Config       =  require('./Config')('logger');
 
 function ensureDirSync(dir) {
@@ -17,6 +18,8 @@ function Logger() {
   this.setupChatlogWriter();
   this.setupConsoleLog();
   this.setupGamelogWriter();
+  this.setupChatlogDb();
+  this.setupGamelogDb();
 }
 
 Logger.prototype.setupConsoleLog = function() {
@@ -79,6 +82,44 @@ Logger.prototype.setupChatlogWriter = function() {
       chatStream = fs.createWriteStream(chatFile, {flags:'a'});
     }
     chatStream.write(JSON.stringify(msg) + '\n');
+  });
+};
+
+Logger.prototype.setupGamelogDb = function() {
+  this.client.on('game_crash', function(data, info) {
+    Pg.putGame(info, function(err) {
+      if (err) console.error('Failed to log game #' + info.game_id + '.\nError:', err);
+    });
+  });
+};
+
+Logger.prototype.setupChatlogDb = function() {
+  this.client.on('msg', function(msg) {
+    switch(msg.type) {
+    case 'say':
+      Pg.putChat(msg.username, msg.message, new Date(msg.time), function(err) {
+        if (err) console.error('Failed to log:', msg, '\nError:', err);
+      });
+      break;
+    case 'mute':
+      /*
+      { "time":"2015-02-09T21:26:42.946Z",
+        "type":"mute",
+        "moderator":"Steve",
+        "username":"kungfuant",
+        "timespec":"1s",
+        "shadow":true
+      }
+      */
+      Pg.putMute(
+        msg.username, msg.moderator, msg.timespec, msg.shadow,
+        new Date(msg.time), function(err) {
+          if (err) console.error('Failed to log:', msg, '\nError:', err);
+      });
+      break;
+    default:
+      break;
+    }
   });
 };
 
