@@ -33,7 +33,7 @@ function query(query, params, cb) {
         done();
         if (err) {
           if (err.code === '40P01') {
-            console.log('Warning: Retrying deadlocked transaction: ', query, params);
+            console.warn('Warning: Retrying deadlocked transaction: ', query, params);
             return doIt();
           }
           return cb(err);
@@ -68,7 +68,7 @@ function transaction(runner, cb) {
         client.query('ROLLBACK', done);
 
         if (err.code === '40P01') {
-          console.log('Warning: Retrying deadlocked transaction..');
+          console.warn('Warning: Retrying deadlocked transaction..');
           return doIt();
         }
         cb(err);
@@ -145,13 +145,13 @@ CREATE TABLE chats (
 exports.putChat = function(username, message, timestamp, cb) {
   debug('Recording chat message. User: ' + username);
   getUser(username, function(err, user) {
-    if (err) return cb(err);
+    if (err) return cb && cb(err);
 
     var q = 'INSERT INTO chats(user_id, message, created) VALUES ($1, $2, $3)';
     var p = [user.id, message, timestamp];
     query(q, p, function(err) {
-      if (err) return cb(err);
-      return cb(null);
+      if (err) return cb && cb(err);
+      return cb && cb(null);
     });
   });
 };
@@ -167,9 +167,12 @@ CREATE TABLE mutes (
 );
 */
 exports.putMute = function(username, moderatorname, timespec, shadow, timestamp, cb) {
-  debug('Recording mute message. User: ' + username, '. Moderator: ' + moderatorname);
+  debug('Recording mute message.' +
+        ' User: ' + username + '.' +
+        ' Moderator: ' + moderatorname);
+
   async.map([username, moderatorname], getUser, function (err, vals) {
-    if (err) return cb(err);
+    if (err) return cb && cb(err);
     var usr = vals[0];
     var mod = vals[1];
 
@@ -179,10 +182,52 @@ exports.putMute = function(username, moderatorname, timespec, shadow, timestamp,
       'VALUES ($1, $2, $3, $4, $5)';
     var p = [usr.id, mod.id, timespec, shadow, timestamp];
     query(q, p, function(err) {
-      if (err) return cb(err);
-      return cb(null);
+      if (err) return cb && cb(err);
+      return cb && cb(null);
     });
   });
+};
+
+exports.putUnmute = function(username, moderatorname, shadow, timestamp, cb) {
+  debug('Recording unmute message.' +
+        ' User: ' + username + '.' +
+        ' Moderator: ' + moderatorname);
+
+  async.map([username, moderatorname], getUser, function (err, vals) {
+    if (err) return cb && cb(err);
+    var usr = vals[0];
+    var mod = vals[1];
+
+    var q =
+      'INSERT INTO ' +
+      'unmutes(user_id, moderator_id, shadow, created) ' +
+      'VALUES ($1, $2, $3, $4, $5)';
+    var p = [usr.id, mod.id, timespec, shadow, timestamp];
+    query(q, p, function(err) {
+      if (err) return cb && cb(err);
+      return cb && cb(null);
+    });
+  });
+};
+
+exports.putMsg = function(msg, cb) {
+  switch(msg.type) {
+  case 'say':
+    return this.putChat(msg.username, msg.message, new Date(msg.time), cb);
+  case 'mute':
+    return this.putMute(
+      msg.username, msg.moderator, msg.timespec,
+      msg.shadow, new Date(msg.time), cb);
+  case 'unmute':
+    return this.putUnmute(
+      msg.username, msg.moderator, msg.shadow,
+      new Date(msg.time), cb);
+  case 'error':
+  case 'info':
+    return cb && cb(null);
+  default:
+    return cb && cb('UNKNOWN_MSG_TYPE');
+  }
 };
 
 exports.putGame = function(info, cb) {
@@ -207,7 +252,7 @@ exports.putGame = function(info, cb) {
                 info.server_seed
               ];
       client.query(q, p, function (err) {
-        if (err) return cb(err);
+        if (err) return cb && cb(err);
 
         function putPlay(player, cb) {
           debugpg('Inserting play for ' + player);
@@ -223,8 +268,8 @@ exports.putGame = function(info, cb) {
                     play.bonus || null
                   ];
           client.query(q, p, function(err) {
-            if (err) console.error('Values:', play);
-            cb(err);
+            if (err) console.error('Insert play failed. Values:', play);
+            cb && cb(err);
           });
         }
 
@@ -256,7 +301,7 @@ exports.putLick = function(username, message, creatorname, cb) {
     var p = [user.id, message, creator.id];
     query(q, p, function(err) {
       if (err) return cb(err);
-      return cb(null);
+      return cb && cb(null);
     });
   });
 };

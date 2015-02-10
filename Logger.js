@@ -95,31 +95,9 @@ Logger.prototype.setupGamelogDb = function() {
 
 Logger.prototype.setupChatlogDb = function() {
   this.client.on('msg', function(msg) {
-    switch(msg.type) {
-    case 'say':
-      Pg.putChat(msg.username, msg.message, new Date(msg.time), function(err) {
-        if (err) console.error('Failed to log:', msg, '\nError:', err);
-      });
-      break;
-    case 'mute':
-      /*
-      { "time":"2015-02-09T21:26:42.946Z",
-        "type":"mute",
-        "moderator":"Steve",
-        "username":"kungfuant",
-        "timespec":"1s",
-        "shadow":true
-      }
-      */
-      Pg.putMute(
-        msg.username, msg.moderator, msg.timespec, msg.shadow,
-        new Date(msg.time), function(err) {
-          if (err) console.error('Failed to log:', msg, '\nError:', err);
-      });
-      break;
-    default:
-      break;
-    }
+    Pg.putMsg(msg, function(err) {
+      if (err) console.error('Failed to log msg:', msg, '\nError:', err);
+    });
   });
 };
 
