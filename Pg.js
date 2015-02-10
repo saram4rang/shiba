@@ -201,8 +201,8 @@ exports.putUnmute = function(username, moderatorname, shadow, timestamp, cb) {
     var q =
       'INSERT INTO ' +
       'unmutes(user_id, moderator_id, shadow, created) ' +
-      'VALUES ($1, $2, $3, $4, $5)';
-    var p = [usr.id, mod.id, timespec, shadow, timestamp];
+      'VALUES ($1, $2, $3, $4)';
+    var p = [usr.id, mod.id, shadow, timestamp];
     query(q, p, function(err) {
       if (err) return cb && cb(err);
       return cb && cb(null);
