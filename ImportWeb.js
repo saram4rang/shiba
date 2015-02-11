@@ -1,8 +1,11 @@
 var Parser  = require('jq-html-parser');
-var debug   = require('debug')('shiba:import');
+var async   = require('async');
 var request = require('request');
+var debug   = require('debug')('shiba:import');
+var pg      = require('pg');
+
 var Config  = require('./Config')('production');
-var Lib     = require('./Lib');
+var Pg      = require('./Pg');
 
 var parserconfig =
   { game_id: { selector: 'div.content strong' },
@@ -107,7 +110,6 @@ function getGameInfo(id, cb) {
     (Config.webserver_port ? ':' + Config.webserver_port : '') +
     '/game/' + id;
 
-  console.log('URL', url);
   request(url, function (err, res, body) {
     if (err || res.statusCode != 200)
       return cb(err || res.statusCode);
@@ -120,8 +122,27 @@ function getGameInfo(id, cb) {
   });
 }
 
-getGameInfo(1084318, function(err, info) {
-  if (err) return console.error('Error', err);
+function importGame(id, cb) {
+  getGameInfo(id, function (err, info) {
+    if (err) {
+      console.error('Downloading game #' + info.game_id, 'failed');
+      return cb(err);
+    }
 
-  console.log(info);
+    Pg.putGame(info, function (err) {
+      if (err) {
+        console.error('Importing game #' + info.game_id, 'failed');
+      } else {
+        console.log('Imported game #' + info.game_id);
+      }
+      return cb(err);
+    });
+  });
+}
+
+var ids = process.argv.slice(2);
+
+async.eachSeries(ids, importGame, function (err) {
+  if (err) return console.error('Error', err);
+  pg.end();
 });
