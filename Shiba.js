@@ -400,7 +400,7 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
 Shiba.prototype.onCmdCrash = function(msg, rest) {
   var self = this;
   rest = rest.replace(/^\s+|\s+$/g,'');
-  var crashRegex = /^(([1-9]\d*)(.[0-9]{0,2})?|0(.0{0,2})?)x?$/i;
+  var crashRegex = /^(([1-9]\d*)(\.[0-9]{0,2})?|0(\.0{0,2})?)x?$/i;
   var crashMatch = rest.match(crashRegex);
 
   if (!crashMatch) {
