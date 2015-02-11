@@ -236,6 +236,8 @@ exports.putGame = function(info, cb) {
 
   // Step1: Resolve all player names.
   async.map(players, getUser, function (err, users) {
+    if (err) return cb(err);
+
     var userIds = {};
     for (var i = 0; i < users.length; ++i)
       userIds[users[i].username] = users[i].id;
@@ -243,6 +245,7 @@ exports.putGame = function(info, cb) {
     // Insert into the games and plays table in a common transaction.
     transaction(function(client, cb) {
       debugpg('Inserting game data for game #' + info.game_id);
+
       var q =
         'INSERT INTO ' +
         'games(id, game_crash, seed) ' +
