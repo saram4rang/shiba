@@ -36,7 +36,7 @@ CRASH  ({CP}|{INST})"x"?
 %%
 
 crash
-  : CRASH  -> Math.round(parseFloat(yytext.replace(/[,x]/g, '')))
+  : CRASH  -> Math.round(100 * parseFloat(yytext.replace(/[,x]/g, '')))
   ;
 
 command

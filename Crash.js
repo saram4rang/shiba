@@ -84,7 +84,7 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1:
-this.$ = Math.round(parseFloat(yytext.replace(/[,x]/g, '')));
+this.$ = Math.round(100 * parseFloat(yytext.replace(/[,x]/g, '')));
 break;
 case 2:
 this.$ =  { min: $$[$0], max: $$[$0] };
