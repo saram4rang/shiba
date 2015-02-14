@@ -418,7 +418,7 @@ Shiba.prototype.onCmdCrash = function(msg, cmd) {
         return self.client.doSay('wow. such absence. never seen ' + cmd);
       } else {
         data = data[0];
-        var time = new Date(data.time);
+        var time = new Date(data.created);
         var diff = Date.now() - time;
         var info = self.client.getGameInfo();
         var line =
