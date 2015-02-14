@@ -9,9 +9,11 @@ var Blockchain   =  require('./Blockchain');
 
 var Client       =  require('./Client');
 var Convert      =  require('./Convert');
+var Crash        =  require('./Crash');
 var Lib          =  require('./Lib');
 var Db           =  require('./Db');
 var Config       =  require('./Config')();
+var Pg           =  require('./Pg');
 
 var debug        =  require('debug')('shiba');
 var debugblock   =  require('debug')('shiba:blocknotify');
@@ -293,7 +295,13 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   case 'custom': this.onCmdCustom(msg, rest); break;
   case 'lick': this.onCmdLick(msg, rest); break;
   case 'seen': this.onCmdSeen(msg, rest); break;
-  case 'convert': this.onCmdConvert(msg, rest); break;
+  case 'convert':
+  case 'conver':
+  case 'conv':
+  case 'cv':
+  case 'c':
+      this.onCmdConvert(msg, rest);
+      break;
   case 'block': this.onCmdBlock(msg, rest); break;
   case 'crash': this.onCmdCrash(msg, rest); break;
   }
@@ -397,37 +405,35 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
     });
 };
 
-Shiba.prototype.onCmdCrash = function(msg, rest) {
+Shiba.prototype.onCmdCrash = function(msg, cmd) {
   var self = this;
-  rest = rest.replace(/^\s+|\s+$/g,'');
-  var crashRegex = /^(([1-9]\d*)(\.[0-9]{0,2})?|0(\.0{0,2})?)x?$/i;
-  var crashMatch = rest.match(crashRegex);
 
-  if (!crashMatch) {
-    self.client.doSay('wow. very usage failure. such retry');
-    self.client.doSay('so example, very cool: !crash 1.97');
-    return;
+  try {
+    var qry = Crash.parser.parse(cmd);
+    debug('Crash parse result: ' + JSON.stringify(qry));
+
+    Pg.getCrash(qry, function(err, data) {
+      if (err || data.length == 0) {
+        // Assume that we have never seen this crashpoint.
+        return self.client.doSay('wow. such absence. never seen ' + cmd);
+      } else {
+        data = data[0];
+        var time = new Date(data.time);
+        var diff = Date.now() - time;
+        var info = self.client.getGameInfo();
+        var line =
+          'Seen ' + Lib.formatFactor(data.game_crash) +
+          ' in game #' +  data.id +
+          '. ' + (info.game_id - data.id) +
+          ' games ago (' + Lib.formatTimeDiff(diff) +
+          ')';
+        self.client.doSay(line);
+      }
+    });
+  } catch(e) {
+    console.log('Error', e);
+    return self.client.doSay('wow. very usage failure. such retry');
   }
-
-  var crashPoint = Math.round(parseFloat(crashMatch[1]) * 100);
-
-  Db.getCrash(crashPoint, function(err, data) {
-    if (err) {
-      // Assume that we have never seen this crashpoint.
-      self.client.doSay('wow. such absence. never seen ' + rest);
-    } else {
-      var time = new Date(data.time);
-      var diff = Date.now() - time;
-      var info = self.client.getGameInfo();
-      var line =
-        'Seen ' + crashMatch[1] +
-        'x in game #' +  data.game_id +
-        '. ' + (info.game_id - data.game_id) +
-        ' games ago (' + Lib.formatTimeDiff(diff) +
-        ')';
-      self.client.doSay(line);
-    }
-  });
 };
 
 Shiba.prototype.onCmdConvert = function(msg, conv) {
