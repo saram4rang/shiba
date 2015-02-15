@@ -5,7 +5,7 @@ var Pg    = require('./Pg');
 
 var files = process.argv.slice(2);
 
-async.eachLimit(files, 10, processFile, function (err) {
+async.eachSeries(files, processFile, function (err) {
   if (err) console.error('Error:', err);
   pg.end();
 });

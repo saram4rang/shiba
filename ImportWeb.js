@@ -1,11 +1,19 @@
 var Parser  = require('jq-html-parser');
 var async   = require('async');
 var request = require('request');
+var fs      = require('fs');
 var debug   = require('debug')('shiba:import');
 var pg      = require('pg');
 
 var Config  = require('./Config')('production');
 var Pg      = require('./Pg');
+
+function ensureDirSync(dir) {
+  try { fs.mkdirSync(dir); }
+  catch(e) { if (e.code != 'EEXIST') throw e; }
+}
+ensureDirSync('gamelogs');
+ensureDirSync('gamelogs/web');
 
 var parserconfig =
   { game_id: { selector: 'div.content strong' },
@@ -125,18 +133,33 @@ function getGameInfo(id, cb) {
 function importGame(id, cb) {
   getGameInfo(id, function (err, info) {
     if (err) {
-      console.error('Downloading game #' + info.game_id, 'failed');
+      console.error('Downloading game #' + id, 'failed');
       return cb(err);
     }
 
-    Pg.putGame(info, function (err) {
-      if (err) {
-        console.error('Importing game #' + info.game_id, 'failed');
-      } else {
-        console.log('Imported game #' + info.game_id);
-      }
-      return cb(err);
-    });
+    async.parallel(
+      [ function(cb) {
+	  Pg.putGame(info, function (err) {
+	    if (err) {
+              console.error('Importing game #' + info.game_id, 'failed');
+	    } else {
+              console.log('Imported game #' + info.game_id);
+	    }
+	    return cb(err);
+	  });
+	},
+	function (cb) {
+	  var gameLogFile = 'gamelogs/web/' + info.game_id + '.json';
+	  fs.writeFile(gameLogFile, JSON.stringify(info, null, ' '), function(err) {
+	    if (err) {
+              console.error('Importing game #' + info.game_id, 'failed');
+	    } else {
+              console.log('Imported game #' + info.game_id);
+	    }
+	    return cb(err);
+	  });
+	}
+      ], cb);
   });
 }
 
