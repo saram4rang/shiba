@@ -265,7 +265,7 @@ exports.putGame = function(info, cb) {
             'plays(user_id, cash_out, game_id, bet, bonus) ' +
             'VALUES ($1, $2, $3, $4, $5)';
           var p = [ userIds[player],
-                    play.stopped_at || null,
+                    play.stopped_at ? play.bet * play.stopped_at : null,
                     info.game_id,
                     play.bet,
                     play.bonus || null
