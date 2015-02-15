@@ -137,6 +137,7 @@ CREATE UNIQUE INDEX unique_username ON users USING btree (lower(username));
 CREATE INDEX user_id_idx ON users USING btree (id);
 CREATE INDEX unmutes_user_id_idx ON unmutes USING btree (user_id);
 CREATE INDEX unmutes_moderator_id_idx ON unmutes USING btree (moderator_id);
+CREATE UNIQUE INDEX unique_plays_game_user ON plays USING btree (user_id, game_id);
 
 ALTER TABLE ONLY licks
   ADD CONSTRAINT licks_user_id_fkey
