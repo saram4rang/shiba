@@ -282,6 +282,45 @@ exports.putGame = function(info, cb) {
   });
 };
 
+/* Like the above, but only import the information about players. */
+exports.putPlays = function(info, cb) {
+  debug('Recording info for game #' + info.game_id);
+  var players = Object.keys(info.player_info);
+
+  // Step1: Resolve all player names.
+  async.map(players, getUser, function (err, users) {
+    if (err) return cb(err);
+
+    var userIds = {};
+    for (var i = 0; i < users.length; ++i)
+      userIds[users[i].username] = users[i].id;
+
+    // Insert into the games and plays table in a common transaction.
+    transaction(function(client, cb) {
+      function putPlay(player, cb) {
+        debugpg('Inserting play for ' + player);
+        var play = info.player_info[player];
+        var q =
+          'INSERT INTO ' +
+          'plays(user_id, cash_out, game_id, bet, bonus) ' +
+          'VALUES ($1, $2, $3, $4, $5)';
+        var p = [ userIds[player],
+                  (play.bet * play.stopped_at) || null,
+                  info.game_id,
+                  play.bet,
+                  play.bonus || null
+                ];
+        client.query(q, p, function(err) {
+          if (err) console.error('Insert play failed. Values:', play);
+          cb && cb(err);
+        });
+      }
+
+      async.eachSeries(players, putPlay, cb);
+    });
+  });
+};
+
 /*
 CREATE TABLE licks (
   id bigint NOT NULL,
