@@ -11,14 +11,16 @@ CP     [1-9][0-9,]*(\.[0-9]?[0-9]?)?
 INST   "0"(\."0"?"0"?)?
 
 CRASH  ({CP}|{INST})"x"?
-
-/* MOD   [km] */
+CRASHk ({CP}|{INST})"k""x"?
+CRASHm ({CP}|{INST})"m""x"?
 
 %%
 
 \s+          /* skip whitespace */
 
 {CRASH}      return 'CRASH';
+{CRASHk}     return 'CRASHk';
+{CRASHm}     return 'CRASHm';
 "<"          return 'LT';
 "<="         return 'LTE';
 ">"          return 'GT';
@@ -37,7 +39,9 @@ CRASH  ({CP}|{INST})"x"?
 %%
 
 crash
-  : CRASH  -> Math.round(100 * parseFloat(yytext.replace(/[,x]/g, '')))
+  : CRASH  -> Math.round(1e2 * parseFloat(yytext.replace(/[,x]/g, '')))
+  | CRASHk -> Math.round(1e5 * parseFloat(yytext.replace(/[,xk]/g, '')))
+  | CRASHm -> Math.round(1e8 * parseFloat(yytext.replace(/[,xm]/g, '')))
   ;
 
 command
