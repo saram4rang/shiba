@@ -26,6 +26,7 @@ CRASHm ({CP}|{INST})"m""x"?
 ">"          return 'GT';
 ">="         return 'GTE';
 "=="|"="     return 'EQ';
+"MAX"        return 'MAX';
 
 "x"          return 'X';
 
@@ -46,6 +47,7 @@ crash
 
 command
   : crash                  ->  { min: $1, max: $1 }
+  | MAX                    ->  'MAX'
   | EQ crash               ->  { min: $2, max: $2 }
   | LT crash               ->  { max: $2 - 1 }
   | LTE crash              ->  { max: $2     }
