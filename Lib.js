@@ -17,10 +17,13 @@ module.exports =
         var d  = diff;
 
         var words = [];
-        if (d > 0) words.push('' + d + 'd');
-        if (h > 0) words.push('' + h + 'h');
-        if (m > 0) words.push('' + m + 'm');
-        if (s > 0) words.push('' + s + 's');
+        var elems = 0;
+        if (d > 0) { words.push('' + d + 'd'); ++elems; }
+        if (h > 0) { words.push('' + h + 'h'); ++elems; }
+        if (elems >= 2) return words.join(' ');
+        if (m > 0) { words.push('' + m + 'm'); ++elems; }
+        if (elems >= 2) return words.join(' ');
+        if (s > 0) { words.push('' + s + 's'); ++elems; }
         return words.join(' ');
       },
     formatFactor:
