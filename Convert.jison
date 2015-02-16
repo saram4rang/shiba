@@ -175,7 +175,9 @@ modtarget
   | modiso -> { iso: $1.iso, mod: $1.mod }
   ;
 command
-  : source                  -> { amount: $1.amount, str: $1.str, fromiso: $1.iso, frommod: $1.mod, toiso: defaultTarget($1.iso), tomod: '' }
+  : num                     -> { amount: $1.num,    str: $1.str, fromiso: 'BIT',  frommod: '',     toiso: defaultTarget('BIT'), tomod: '' }
+  | nummod                  -> { amount: $1.num,    str: $1.str, fromiso: 'BIT',  frommod: $1.mod, toiso: defaultTarget('BIT'), tomod: '' }
+  | source                  -> { amount: $1.amount, str: $1.str, fromiso: $1.iso, frommod: $1.mod, toiso: defaultTarget($1.iso), tomod: '' }
   | source modtarget        -> { amount: $1.amount, str: $1.str, fromiso: $1.iso, frommod: $1.mod, toiso: $2.iso, tomod: $2.mod }
   | source TO modtarget     -> { amount: $1.amount, str: $1.str, fromiso: $1.iso, frommod: $1.mod, toiso: $3.iso, tomod: $3.mod }
   | target modtarget nummod -> { amount: $3.num,    str: $3.str, fromiso: $1,     frommod: $3.mod, toiso: $2.iso, tomod: $2.mod }
