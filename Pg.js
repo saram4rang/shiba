@@ -364,10 +364,9 @@ exports.getCrash = function(qry, cb) {
   debug('Getting last crashpoint: ' + JSON.stringify(qry));
   var min   = qry.hasOwnProperty('min') ? ' AND game_crash >= ' + qry.min : '';
   var max   = qry.hasOwnProperty('max') ? ' AND game_crash <= ' + qry.max : '';
-  var range = 'id > 420000' + min + max;
+  var range = 'TRUE' + min + max;
   var q = 'SELECT * FROM games WHERE ' + range + ' ORDER BY id DESC LIMIT 1';
   var p = [];
-  console.log(q);
 
   query(q, p, function(err, data) {
     if (err) return cb(err);
