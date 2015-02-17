@@ -30,6 +30,57 @@ module.exports =
       function(f) {
         return (f/100).toFixed(2);
       },
+    formatFactorShort:
+      function(f) {
+        if (f == 0) return '0';
+
+        // Scale the f upfront. We could do that later to preserve
+        // precision, but the code is obfuscated enough already.
+        f /= 100;
+
+        // Calculate the exponent that would be used in scientific
+        // notation. We apply some selective rounding to overcome
+        // numerical errors in calculating the base 10 log.
+        var e = Math.log(f) / Math.LN10;
+        e = Math.round(1e8 * e) / 1e8;
+        e = Math.floor(e);
+
+        // The modifier that we want to use, e.g. k or m.
+        var mod;
+
+        if (e < 4) {
+          mod = '';
+        } else if (e < 6) {
+          mod = 'k';
+          f /= 1e3;
+          e -= 3;
+        } else {
+          mod = 'M';
+          f /= 1e6;
+          e -= 6;
+        }
+
+        // The number of decimal places right to the decimal point in
+        // scientific notation that we wish to keep.
+        var places;
+        switch (e) {
+        case 0:  places = 4; break;
+        case 1:  places = 3; break;
+        case 2:  places = 4; break;
+        case 3:  places = 5; break;
+        default: places = 0; break;
+        }
+
+        var e = Math.min(e,places);
+        f = Math.round(f / Math.pow(10, e-places));
+        /* Make sure that the exponent is positive during rescaling. */
+        f = e-places >= 0 ? f * Math.pow(10, e-places) : f / Math.pow(10, places-e);
+        f = f.toFixed(Math.max(0, places-e));
+        /* Remove unnecessary zeroes. */
+        f = f.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
+
+        return f + mod;
+      },
     duration:
       function(cp) {
         return Math.ceil(this.inverseGrowth(cp + 1));

@@ -422,7 +422,7 @@ Shiba.prototype.onCmdCrash = function(msg, cmd) {
         var diff = Date.now() - time;
         var info = self.client.getGameInfo();
         var line =
-          'Seen ' + Lib.formatFactor(data.game_crash) +
+          'Seen ' + Lib.formatFactorShort(data.game_crash) +
           ' in #' +  data.id +
           '. ' + (info.game_id - data.id) +
           ' games ago (' + Lib.formatTimeDiff(diff) +
