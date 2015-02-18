@@ -520,14 +520,26 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
             0.000243456487    ->  0.00024346
        */
 
-      /* Scale using the exponent, but not more than 5 integral places. */
-      var e = Math.min(Math.floor(Math.log(result) / Math.log(10)),5);
-      result = Math.round(result / Math.pow(10, e-5));
-      /* Make sure that the exponent is positive during rescaling. */
-      result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
-      result = result.toFixed(Math.max(0, 5-e));
-      /* Remove unnecessary zeroes. */
-      result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
+      if (result != 0) {
+        /* Scale using the exponent, but not more than 5 integral places. */
+        var e = Math.min(Math.floor(Math.log(Math.abs(result)) / Math.log(10)),5);
+        result = Math.round(result / Math.pow(10, e-5));
+        /* Make sure that the exponent is positive during rescaling. */
+        result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
+        var prec = Math.max(0, 5-e);
+        if (prec > 15) {
+          // Really small number and lots of places to show. Instead of printing
+          // them all we rather accept scientific notation. We are already more
+          // liberal than the generic toString() conversion.
+          result = '' + result;
+        } else {
+          result = result.toFixed(prec);
+        }
+        /* Remove unnecessary zeroes. */
+        result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
+      } else {
+        result = '0';
+      }
       var prettyResult = pretty(conv.toiso, result, conv.tomod);
 
       /* Send everything to the chat. */
