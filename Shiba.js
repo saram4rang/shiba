@@ -45,7 +45,6 @@ function Shiba() {
       // Connect to the site.
       self.client = new Client(Config);
 
-      self.setupGameCrashScrape();
       self.setupUsernameScrape();
       // self.setupConsoleLog();
       // self.setupLossStreakComment();
@@ -53,19 +52,6 @@ function Shiba() {
       self.setupBlockchain();
     });
 }
-
-Shiba.prototype.setupGameCrashScrape = function() {
-  var self = this;
-  self.client.on('game_crash', function(data, info) {
-    // We use the current time, i.e. crash time instead
-    // of the game start time.
-    Db.updateCrash(
-      info.game_crash,
-      { time: Date.now(),
-        game_id: info.game_id
-      });
-  });
-};
 
 Shiba.prototype.setupUsernameScrape = function() {
   var self = this;
