@@ -144,7 +144,7 @@ Shiba.prototype.getChatMessages = function(username, after) {
   var messages = [];
   var chatHistory = this.client.chatHistory;
   for (var i = 0; i < chatHistory.length; ++i) {
-    then = new Date(chatHistory[i].time);
+    var then = new Date(chatHistory[i].time);
     if (then < after) break;
 
     if (chatHistory[i].type === 'say' &&
@@ -463,25 +463,25 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
          * provided. Otherwise use the ISO code. */
         case 'PLN':
           if (modFactor(mod) == 1) {
-            return num + 'zł'
+            return num + 'zł';
           } else {
             return num + mod + ' PLN';
           }
         case 'VND':
           if (modFactor(mod) == 1) {
-            return num + '₫'
+            return num + '₫';
           } else {
             return num + mod + ' VND';
           }
         case 'XAG':
           if (modFactor(mod) == 1) {
-            return num + ' oz. tr. of silver'
+            return num + ' oz. tr. of silver';
           } else {
             return num + mod + ' XAG';
           }
         case 'XAU':
           if (modFactor(mod) == 1) {
-            return num + ' oz. tr. of gold'
+            return num + ' oz. tr. of gold';
           } else {
             return num + mod + ' XAU';
           }
