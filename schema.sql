@@ -201,3 +201,68 @@ ALTER TABLE ONLY unmutes
   REFERENCES users(id)
   ON UPDATE CASCADE
   ON DELETE CASCADE;
+
+
+-- Game crash table
+
+-- This is derived data to have fast lookups of game crashes without
+-- doing a linear scan through the games table. Fill this table
+-- initially with
+--   INSERT INTO game_crashes
+--     (SELECT game_crash,MAX(id)
+--        FROM games
+--        GROUP BY game_crash);
+
+CREATE TABLE game_crashes (
+  game_crash bigint NOT NULL,
+  id bigint NOT NULL
+);
+
+ALTER TABLE ONLY game_crashes
+  ADD CONSTRAINT game_crashes_pkey
+  PRIMARY KEY (game_crash);
+
+ALTER TABLE ONLY game_crashes
+  ADD CONSTRAINT game_crashes_id_fkey
+  FOREIGN KEY (id)
+  REFERENCES games(id)
+  ON UPDATE CASCADE
+  ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX game_crashes_crash_idx
+  ON game_crashes
+  USING btree (game_crash);
+
+CREATE UNIQUE INDEX game_crashes_id_idx
+  ON game_crashes
+  USING btree (id DESC);
+
+
+CREATE FUNCTION game_crash_trigger() RETURNS trigger AS
+$$
+BEGIN
+  LOOP
+    -- First try to update the key.
+    UPDATE game_crashes
+      SET id = CASE WHEN NEW.id > id
+                 THEN NEW.id
+                 ELSE id
+               END
+      WHERE game_crash = NEW.game_crash;
+    IF found THEN RETURN NEW; END IF;
+    -- Not there, so try to insert the key. If someone else inserts
+    -- the same key concurrently, we could get a unique-key failure.
+    BEGIN
+      INSERT INTO game_crashes(game_crash,id) VALUES (NEW.game_crash, NEW.id);
+      RETURN NEW;
+    EXCEPTION WHEN unique_violation THEN
+    -- Do nothing, and loop to try the UPDATE again.
+    END;
+  END LOOP;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER game_crash_trigger
+  AFTER INSERT ON games
+  FOR EACH ROW EXECUTE PROCEDURE game_crash_trigger();
