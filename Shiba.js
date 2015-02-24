@@ -281,6 +281,10 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   case 'custom': this.onCmdCustom(msg, rest); break;
   case 'lick': this.onCmdLick(msg, rest); break;
   case 'seen': this.onCmdSeen(msg, rest); break;
+  case 'faq':
+  case 'help':
+      this.onCmdHelp(msg, rest);
+      break;
   case 'convert':
   case 'conver':
   case 'conv':
@@ -291,6 +295,12 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   case 'block': this.onCmdBlock(msg, rest); break;
   case 'crash': this.onCmdCrash(msg, rest); break;
   }
+};
+
+Shiba.prototype.onCmdHelp = function(msg, rest) {
+  this.client.doSay(
+      'very explanation. much insight: ' +
+      'https://github.com/moneypot/shiba/wiki/');
 };
 
 Shiba.prototype.onCmdCustom = function(msg, rest) {
