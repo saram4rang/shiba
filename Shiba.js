@@ -461,6 +461,12 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
          possible by replacing ISO codes with currency symbols.
       */
       function pretty(iso, num, mod) {
+        /* In case somebody specifically asked for milli we
+           only print the ISO code variant.
+        */
+        if (mod == 'm')
+          return num + " m" + iso;
+
         switch (iso) {
         case 'EUR': return "€"   + num + mod;
         case 'GBP': return "£"   + num + mod;
