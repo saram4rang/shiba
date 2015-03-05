@@ -27,6 +27,7 @@ CRASHm ({CP}|{INST})"m""x"?
 ">="         return 'GTE';
 "=="|"="     return 'EQ';
 "MAX"        return 'MAX';
+"-"          return 'MINUS';
 
 "x"          return 'X';
 
@@ -73,6 +74,9 @@ command
   | crash GT X GTE crash   ->  { min: $5,     max: $1 - 1 }
   | crash GTE X GT crash   ->  { min: $5 + 1, max: $1     }
   | crash GTE X GTE crash  ->  { min: $5,     max: $1     }
+  | crash MINUS crash      ->  { min: $1,     max: $3     }
+  | crash MINUS            ->  { min: $1 }
+  | MINUS crash            ->  { max: $2 }
   ;
 line
   : command EOF -> $1; return $1;
