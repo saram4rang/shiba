@@ -128,7 +128,7 @@ ALTER TABLE ONLY unmutes ADD CONSTRAINT unmutes_pkey PRIMARY KEY (id);
 
 CREATE INDEX licks_user_id_idx ON licks USING btree (user_id);
 CREATE INDEX licks_creator_id_idx ON licks USING btree (creator_id);
-CREATE INDEX chats_user_id_idx ON chats USING btree (user_id);
+CREATE INDEX chats_user_id_idx ON chats USING btree (user_id, created DESC);
 CREATE INDEX mutes_user_id_idx ON mutes USING btree (user_id);
 CREATE INDEX mutes_moderator_id_idx ON mutes USING btree (moderator_id);
 CREATE INDEX plays_game_id_idx ON plays USING btree (game_id);
@@ -272,7 +272,7 @@ CREATE TABLE automutes (
   creator_id bigint NOT NULL,
   created timestamp with time zone DEFAULT now() NOT NULL,
   regexp text NOT NULL,
-  enabled boolean DEFAULT true NOT NULL,
+  enabled boolean DEFAULT true NOT NULL
 );
 
 CREATE SEQUENCE automutes_id_seq
