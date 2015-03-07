@@ -553,6 +553,9 @@ Shiba.prototype.onCmdBlock = function(msg) {
 
 Shiba.prototype.onCmdAutomute = function(msg, rest) {
   var self = this;
+  if (msg.role != 'admin' &&
+      msg.role != 'moderator') return;
+
   try {
     var match = rest.match(/^\/(.*)\/([gi]*)$/);
     var regex = new RegExp(match[1], match[2]);
