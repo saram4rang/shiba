@@ -383,3 +383,38 @@ exports.getCrash = function(qry, cb) {
     return cb(null, data.rows);
   });
 };
+
+exports.addAutomute = function(creator, regex, cb) {
+  regex = regex.toString();
+  debug('Adding automute ' + regex);
+
+  getUser(creator, function(err, user) {
+    if (err) return cb && cb(err);
+
+    var q = 'INSERT INTO automutes(creator_id, regexp) VALUES($1, $2)';
+    var p = [user.id, regex];
+
+    query(q, p, function(err, data) {
+      if (err) { console.error(err); return cb(err); };
+      return cb(null);
+    });
+  });
+};
+
+exports.getAutomutes = function(cb) {
+  debug('Getting automute list.');
+  var q = 'SELECT regexp FROM automutes WHERE enabled';
+  var p = [];
+
+  query(q, p, function(err, data) {
+    if (err) { console.error(err); return cb(err); };
+
+    var reg = /^\/(.*)\/([gi]*)$/;
+    var res = [];
+    for (var i = 0; i < data.rows.length; ++i) {
+      var match = data.rows[i].regexp.match(reg);
+      res.push(new RegExp(match[1], match[2]));
+    }
+    return cb(null, res);
+  });
+};

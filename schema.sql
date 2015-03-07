@@ -266,3 +266,34 @@ LANGUAGE plpgsql;
 CREATE TRIGGER game_crash_trigger
   AFTER INSERT ON games
   FOR EACH ROW EXECUTE PROCEDURE game_crash_trigger();
+
+CREATE TABLE automutes (
+  id bigint NOT NULL,
+  creator_id bigint NOT NULL,
+  created timestamp with time zone DEFAULT now() NOT NULL,
+  regexp text NOT NULL,
+  enabled boolean DEFAULT true NOT NULL,
+);
+
+CREATE SEQUENCE automutes_id_seq
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+
+ALTER SEQUENCE automutes_id_seq
+  OWNED BY automutes.id;
+
+ALTER TABLE ONLY automutes
+  ALTER COLUMN id
+  SET DEFAULT nextval('automutes_id_seq'::regclass);
+ALTER TABLE ONLY automutes
+  ADD CONSTRAINT automutes_pkey
+  PRIMARY KEY (id);
+ALTER TABLE ONLY automutes
+  ADD CONSTRAINT automutes_creator_id_fkey
+  FOREIGN KEY (creator_id)
+  REFERENCES users(id)
+  ON UPDATE CASCADE
+  ON DELETE CASCADE;
