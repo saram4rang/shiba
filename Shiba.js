@@ -31,7 +31,8 @@ function Shiba() {
           'block', { height: 1, time: Date.now()}, cb); },
       function(cb) {
         Db.getWithDefault(
-          'blockNotifyUsers', [], cb); }
+          'blockNotifyUsers', [], cb); },
+      Pg.getAutomutes
     ], function (err, val) {
       // Abort immediately on startup.
       if (err) throw err;
@@ -41,6 +42,9 @@ function Shiba() {
       // Awkward name for an array that holds names of users which
       // will be when a new block has been mined.
       self.blockNotifyUsers = val[1];
+
+      // List of automute regexps
+      self.automutes = val[2];
 
       // Connect to the site.
       self.client = new Client(Config);
@@ -157,41 +161,9 @@ Shiba.prototype.getChatMessages = function(username, after) {
 Shiba.prototype.onSay = function(msg) {
   if (msg.username === this.client.username) return;
 
-  var regexs  = [ /cloud.*mining.*vk\.cc\/[0-9a-z]/i,
-                  /cur\.lv\/.*/i,
-                  /minefield\.bitcoinlab\.org\/.*(\?|&)r=/i,
-                  /strongbank\.biz\/\?.*ref=.*/i,
-                  /satoshimines\.com\/a\/[^\s]+/i,
-                  /hashprofit\.com\/.*\?.*hp=[0-9]+/i,
-                  /coins-miners\.com\/.*\?.*owner=[0-9]+/i,
-                  /coinichiwa\.com\/a\/[0-9]+/i,
-                  /2fxltd\.com[^\s]*ref=.+/i,
-                  /bitwheel\.io\/ref\/\?[0-9]+/i,
-                  /primedice\.com[^\s]*ref=.+/i,
-                  /yabtcl\.com[^\s]*ref=[0-9]+/i,
-                  /win88\.me\/usr\/[0-9]+/i,
-                  /eobot\.com\/user\/[0-9]+/i,
-                  /coincheckin\.com[^\s]*r=.+/i,
-                  /eobot\.com\/user\/[0-9]+/i,
-                  /bitcoin-bucket\.com[^\s]*a=.*/i,
-                  /xapo\.com\/r\/.*/i,
-                  /gudangreceh\.com[^\s]*ref=.+/i,
-                  /bitcasino\.io[^\s]*ref=.+/i,
-                  /itcoin\.biz\/[^\s]+/i,
-                  /bitcostars\.com[^\s]*Referrer=[0-9]+/i,
-                  /999dice\.com\/\?[0-9]+/i,
-                  /thecoins\.net\/[^\s]*site\/ref/i,
-                  /motherfaucet\.com[^\s]*r=[0-9a-z]+/i,
-                  /cointellect\.com[^\s]*code=[0-9a-z]+/i,
-                  /cointellect\.ee[^\s]*code=[0-9a-z]+/i,
-                  /luckybitfaucet\.com[^\s]*r=[0-9a-z]+/i,
-                  /btc-flow\.com[^\s]*\/r\/[0-9a-z]+/i,
-                  /bit-invest\.com[^\s]*ref=[0-9a-z]+/i
-                ];
-
   // Match entire message against the regular expressions.
-  for (var r = 0; r < regexs.length; ++r)
-    if (msg.message.match(regexs[r]))
+  for (var r = 0; r < this.automutes.length; ++r)
+    if (msg.message.match(this.automutes[r]))
       return this.client.doMute(msg.username, '12h');
 
   // Extract a list of URLs.
@@ -233,9 +205,9 @@ Shiba.prototype.onSay = function(msg) {
       debugunshort('Checking url: ' + url);
 
       // Run the regular expressions against the unshortened url.
-      for (var r = 0; r < regexs.length; ++r)
-        if (url.match(regexs[r])) {
-          debugunshort('URL matched ' + regexs[r]);
+      for (var r = 0; r < self.automutes.length; ++r)
+        if (url.match(self.automutes[r])) {
+          debugunshort('URL matched ' + self.automutes[r]);
           return self.client.doMute(msg.username, '48h');
         }
     }
@@ -294,6 +266,7 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
       break;
   case 'block': this.onCmdBlock(msg, rest); break;
   case 'crash': this.onCmdCrash(msg, rest); break;
+  case 'automute': this.onCmdAutomute(msg, rest); break;
   }
 };
 
@@ -576,6 +549,25 @@ Shiba.prototype.onCmdBlock = function(msg) {
   }
 
   this.client.doSay(line);
+};
+
+Shiba.prototype.onCmdAutomute = function(msg, rest) {
+  var self = this;
+  try {
+    var match = rest.match(/^\/(.*)\/([gi]*)$/);
+    var regex = new RegExp(match[1], match[2]);
+  } catch(e) {
+    return self.client.doSay('Regex compile file: ' + e.message);
+  }
+
+  Pg.addAutomute(msg.username, regex, function(err) {
+    if (err) {
+      self.client.doSay('failed adding automute to database.');
+    } else {
+      self.client.doSay('wow. so cool. very obedient');
+      self.automutes.push(regex);
+    }
+  });
 };
 
 var shiba = new Shiba();
