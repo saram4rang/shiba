@@ -125,6 +125,26 @@ function getOrCreateUser(username, cb) {
   }, cb);
 };
 
+function getExistingUser(username, cb) {
+  debug('Getting user: ' + username);
+  assert(username);
+
+  var q = 'SELECT * FROM users WHERE lower(username) = lower($1)';
+  var p = [username];
+
+  query(q, p, function(err, data) {
+    if (err) return cb(err);
+
+    if (data.rows.length > 0) {
+      // User exists. Return the first (and only) row.
+      assert(data.rows.length == 1);
+      cb(null, data.rows[0]);
+    } else {
+      cb('USER_DOES_NOT_EXIST');
+    }
+  });
+};
+
 var userCache = new AsyncCache({
   maxAge: 1000 * 60 * 10, // 10 minutes
   load : getOrCreateUser
@@ -416,5 +436,36 @@ exports.getAutomutes = function(cb) {
       res.push(new RegExp(match[1], match[2]));
     }
     return cb(null, res);
+  });
+};
+
+exports.getLastSeen = function(username, cb) {
+  debug('Getting last chat message of user ' + username);
+
+  getExistingUser(username, function(err, user) {
+    if (err) { console.error(err); return cb(err); };
+
+    var q =
+      'SELECT created FROM chats WHERE user_id = $1 ' +
+      'ORDER BY created DESC LIMIT 1';
+    var p = [user.id];
+
+    query(q, p, function(err, data) {
+      if (err) { console.error(err); return cb(err); };
+
+      if (data.rows.length > 0) {
+        // Return the first (and only) row.
+        assert(data.rows.length == 1);
+        var result =
+          { username: user.username,
+            time:     new Date(data.rows[0].created)
+          };
+
+        cb(null, result);
+      } else {
+        // User never said anything.
+        cb(null, {username: user.username});
+      }
+    });
   });
 };

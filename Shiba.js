@@ -349,29 +349,30 @@ Shiba.prototype.onCmdSeen = function(msg, user) {
     return;
   }
 
-  async.parallel(
-    [ function(cb) { Db.getUsername(user, cb); },
-      function(cb) { Db.getSeen(user, cb); }
-    ],
-    function (err, val) {
-      if (err) return;
+  Pg.getLastSeen(user, function (err, message) {
+    if (err) {
+      if (err === 'USER_DOES_NOT_EXIST')
+        self.client.doSay('very stranger. never seen');
+      return;
+    }
 
-      var username = val[0];
-      var msg      = val[1];
-      var time     = new Date(msg.time);
-      var diff     = Date.now() - time;
+    if (!message.time) {
+      // User exists but hasn't said a word.
+      return self.client.doSay('very silent. never spoken');
+    }
 
-      var line;
-      if (diff < 1000) {
-        line = 'Seen ' + username + ' just now.';
-      } else {
-        line = 'Seen ' + username + ' ';
-        line += Lib.formatTimeDiff(diff);
-        line += ' ago.';
-      }
+    var diff = Date.now() - message.time;
+    var line;
+    if (diff < 1000) {
+      line = 'Seen ' + message.username + ' just now.';
+    } else {
+      line = 'Seen ' + message.username + ' ';
+      line += Lib.formatTimeDiff(diff);
+      line += ' ago.';
+    }
 
-      self.client.doSay(line);
-    });
+    self.client.doSay(line);
+  });
 };
 
 Shiba.prototype.onCmdCrash = function(msg, cmd) {
