@@ -297,3 +297,13 @@ ALTER TABLE ONLY automutes
   REFERENCES users(id)
   ON UPDATE CASCADE
   ON DELETE CASCADE;
+
+CREATE TABLE blocks (
+  height integer NOT NULL,
+  hash text NOT NULL,
+  confirmation timestamp with time zone DEFAULT now() NOT NULL,
+  notification timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE ONLY blocks
+  ADD CONSTRAINT bv_blocks_pkey
+  PRIMARY KEY (height, hash);

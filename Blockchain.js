@@ -74,7 +74,8 @@ Blockchain.prototype.onMessage = function(message, flags) {
       break;
     }
   } catch (e) {
-    debug("Error while decoding message: %s", e);
+    console.error("Error while decoding message:", e.message);
+    console.error(e.stack);
   }
 
   this.resetPingTimer();

@@ -475,3 +475,22 @@ exports.getLastSeen = function(username, cb) {
     });
   });
 };
+
+exports.getLatestBlock = function(cb) {
+  var q = 'SELECT * FROM blocks ORDER BY height DESC LIMIT 1';
+  var p = [];
+
+  query(q, p, function(err, data) {
+    if (err) { console.error(err); return cb(err); };
+    cb(null, data.rows[0]);
+  });
+};
+
+exports.putBlock = function(block, cb) {
+  var q = 'INSERT INTO blocks(height, hash) VALUES($1, $2)';
+  var p = [block.height, block.hash];
+  query(q, p, function(err) {
+    // Ignore unique_violation code 23505.
+    err && err.code == 23505 ? cb(null) : cb(err);
+  });
+};

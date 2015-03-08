@@ -26,9 +26,7 @@ function Shiba() {
 
   var self = this;
   async.parallel(
-    [ function(cb) {
-        Db.getWithDefault(
-          'block', { height: 1, time: Date.now()}, cb); },
+    [ Pg.getLatestBlock,
       function(cb) {
         Db.getWithDefault(
           'blockNotifyUsers', [], cb); },
@@ -120,18 +118,24 @@ Shiba.prototype.setupBlockchain = function() {
 };
 
 Shiba.prototype.onBlock = function(block) {
-  /* Check if block is indeed new and only signal in this
-     case. This does not work for reorgs and also does not work if
-     Blockchain announces blocks out of order, but screw these
-     cases.
-  */
-  if (block.height > this.block.height) {
-    this.block = block;
-    Db.put('block', block);
+  var newBlock =
+    { height: block.height,
+      hash: block.hash,
+      confirmation: new Date(block.time*1000),
+      notification: new Date()
+    };
+
+  Pg.putBlock(newBlock, function(err) {
+    if (err) console.error('Error putting block:', err);
+  });
+
+  // Check if block is indeed new and only signal in this case.
+  if (newBlock.height > this.block.height) {
+    this.block = newBlock;
 
     if (this.blockNotifyUsers.length > 0) {
       var users = this.blockNotifyUsers.join(': ') + ': ';
-      var line = users + 'Block #' + block.height + ' mined.';
+      var line = users + 'Block #' + newBlock.height + ' mined.';
       this.client.doSay(line);
       this.blockNotifyUsers = [];
       Db.put('blockNotifyUsers', this.blockNotifyUsers);
@@ -522,7 +526,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
 };
 
 Shiba.prototype.onCmdBlock = function(msg) {
-  var time  = new Date(this.block.time * 1000);
+  var time  = this.block.notification;
   var diff  = Date.now() - time;
 
   var line = 'Seen block #' + this.block.height;
