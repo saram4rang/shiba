@@ -370,12 +370,18 @@ exports.putLick = function(username, message, creatorname, cb) {
 
 exports.getLick = function(username, cb) {
   debug('Getting custom lick messages for user: ' + username);
-  getUser(username, function (err, user) {
+  getExistingUser(username, function (err, user) {
+    if (err) { console.error(err); return cb(err); };
+
     var q = 'SELECT message FROM licks WHERE user_id = $1';
     var p = [user.id];
     query(q, p, function(err, data) {
       if (err) return cb(err);
-      return cb(null, data.rows);
+      var licks = [];
+      for (var i = 0; i < data.rows.length; ++ i) {
+        licks.push(data.rows[i].message);
+      }
+      return cb(null, {username: user.username, licks: licks});
     });
   });
 };

@@ -49,7 +49,7 @@ function Shiba() {
       // Connect to the site.
       self.client = new Client(Config);
 
-      self.setupUsernameScrape();
+      self.setupChatHook();
       // self.setupConsoleLog();
       // self.setupLossStreakComment();
       self.setupScamComment();
@@ -57,15 +57,10 @@ function Shiba() {
     });
 }
 
-Shiba.prototype.setupUsernameScrape = function() {
+Shiba.prototype.setupChatHook = function() {
   var self = this;
-  self.client.on('player_bet', function(data) {
-    Db.putUsername(data.username);
-  });
   self.client.on('msg', function(msg) {
     if (msg.type != 'say') return;
-    Db.putUsername(msg.username);
-    Db.updateSeen(msg.username, msg);
     self.onSay(msg);
   });
 };
@@ -292,10 +287,10 @@ Shiba.prototype.onCmdCustom = function(msg, rest) {
 
   var customUser  = customMatch[1];
   var customMsg   = customMatch[2];
-  Db.addCustomLickMessage(customUser, customMsg, function (err) {
+  Pg.putLick(customUser, customMsg, msg.username, function (err) {
     if (err) {
       console.log('onCmdCustom:', err);
-      self.client.doSay('wow. such leveldb fail');
+      self.client.doSay('wow. such database fail');
     } else {
       self.client.doSay('wow. so cool. very obedient');
     }
@@ -316,20 +311,20 @@ Shiba.prototype.onCmdLick = function(msg, user) {
     return;
   }
 
-  async.parallel(
-    [ function(cb) { Db.getUsername(user, cb); },
-      function(cb) { Db.getCustomLickMessages(user, cb); }
-    ],
-    function (err, val) {
-      if (err) return;
+  Pg.getLick(user, function(err, data) {
+    if (err) {
+      if (err === 'USER_DOES_NOT_EXIST')
+        self.client.doSay('very stranger. never seen');
+      return;
+    }
 
-      var username = val[0];
-      var customs  = val[1];
-      customs.push('licks ' + username);
-      var r = Math.random() * (customs.length - 0.8);
-      var m = customs[Math.floor(r)];
-      self.client.doSay(m);
-    });
+    var username = data.username;
+    var customs = data.licks;
+    customs.push('licks ' + username);
+    var r = Math.random() * (customs.length - 0.8);
+    var m = customs[Math.floor(r)];
+    self.client.doSay(m);
+  });
 };
 
 Shiba.prototype.onCmdSeen = function(msg, user) {
