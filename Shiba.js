@@ -20,7 +20,7 @@ var debugblock   =  require('debug')('shiba:blocknotify');
 var debugunshort =  require('debug')('shiba:unshort');
 
 // Command syntax
-var cmdReg = /\s*!([a-zA-z]*)\s*(.*)$/i;
+var cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
 
 function Shiba() {
 
