@@ -307,3 +307,10 @@ CREATE TABLE blocks (
 ALTER TABLE ONLY blocks
   ADD CONSTRAINT bv_blocks_pkey
   PRIMARY KEY (height, hash);
+
+CREATE TABLE blocknotifications (
+  username text NOT NULL
+);
+ALTER TABLE ONLY blocknotifications
+  ADD CONSTRAINT bv_blocknotifications_pkey
+  PRIMARY KEY (username);

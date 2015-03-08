@@ -494,3 +494,34 @@ exports.putBlock = function(block, cb) {
     err && err.code == 23505 ? cb(null) : cb(err);
   });
 };
+
+exports.getBlockNotifications = function(cb) {
+  debug('Getting block notification list');
+  var q = 'SELECT * FROM blocknotifications';
+  var p = [];
+  query(q, p, function(err, data) {
+    if (err) return cb(err);
+    var result = [];
+    data = data.rows;
+    for (var i = 0; i < data.length; ++i)
+      result.push(data[i].username);
+    cb(null, result);
+  });
+};
+
+exports.putBlockNotification = function(username, cb) {
+  debug('Adding %s to block notification list', username);
+  var q = 'INSERT INTO blocknotifications(username) VALUES($1)';
+  var p = [username];
+  query(q, p, function(err) {
+    // Ignore unique_violation code 23505.
+    err && err.code == 23505 ? cb(null) : cb(err);
+  });
+};
+
+exports.clearBlockNotifications = function(cb) {
+  debug('Clearing block notification list');
+  var q = 'DELETE FROM blocknotifications';
+  var p = [];
+  query(q, p, cb);
+};

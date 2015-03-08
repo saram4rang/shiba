@@ -11,7 +11,6 @@ var Client       =  require('./Client');
 var Convert      =  require('./Convert');
 var Crash        =  require('./Crash');
 var Lib          =  require('./Lib');
-var Db           =  require('./Db');
 var Config       =  require('./Config')();
 var Pg           =  require('./Pg');
 
@@ -27,9 +26,7 @@ function Shiba() {
   var self = this;
   async.parallel(
     [ Pg.getLatestBlock,
-      function(cb) {
-        Db.getWithDefault(
-          'blockNotifyUsers', [], cb); },
+      Pg.getBlockNotifications,
       Pg.getAutomutes
     ], function (err, val) {
       // Abort immediately on startup.
@@ -138,7 +135,7 @@ Shiba.prototype.onBlock = function(block) {
       var line = users + 'Block #' + newBlock.height + ' mined.';
       this.client.doSay(line);
       this.blockNotifyUsers = [];
-      Db.put('blockNotifyUsers', this.blockNotifyUsers);
+      Pg.clearBlockNotifications(function(err) {});
     }
   }
 };
@@ -542,7 +539,7 @@ Shiba.prototype.onCmdBlock = function(msg) {
   if (_.indexOf(this.blockNotifyUsers, msg.username) < 0) {
     debugblock("Adding user '%s' to block notfy list", msg.username);
     this.blockNotifyUsers.push(msg.username);
-    Db.put('blockNotifyUsers', this.blockNotifyUsers);
+    Pg.putBlockNotification(msg.username, function(err) {});
   } else {
     debugblock("User '%s' is already on block notfy list", msg.username);
     line += ' ' + msg.username + ': Have patience!';
