@@ -41,7 +41,16 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       /* Previous metals*/
       "GOLD"|"SILVER"|
       /* Additional cryptocurrency codes. */
-      "BITS"|"BIT"|"SATOSHI"|"SAT"|"CLAM"|"DOGE"|"LTC"|"RDD"
+      "XBT"|"BITCOINS"|"BITCOIN"|
+      "BITS"|"BIT"|
+      "SATOSHI"|"SAT"|
+      "CLAMS"|"CLAM"|"CLAMCOINS"|"CLAMCOIN"|
+      "JDCOINS"|"JDCOIN"|"JD-COINS"|"JD-COIN"|"JUSTDICECOINS"|"JUSTDICECOIN"|
+      "CORNEREDCOINS"|"CORNEREDCOIN"|
+      "XDG"|"DOGE"|"DOGECOINS"|"DOGECOIN"|
+      "子犬"|"KOINU"|
+      "LTC"|"LITECOINS"|"LITECOIN"|
+      "RDD"|"REDDCOINS"|"REDDCOIN"
 
 /* Currency signs. Currently doesn't include "¥" because it could
  * stand for either CNY or JPY. */
@@ -83,11 +92,30 @@ TO           return 'TO';
 %{
 function normIso(sym) {
   switch(sym.toUpperCase()) {
-  case 'GOLD':    return 'XAU';
-  case 'SILVER':  return 'XAG';
-  case 'BITS':    return 'BIT';
-  case 'SATOSHI': return 'SAT';
-  default:        return sym.toUpperCase();
+  case 'GOLD':     return 'XAU';
+  case 'SILVER':   return 'XAG';
+  case 'BITS':     return 'BIT';
+  case 'SATOSHI':  return 'SAT';
+  case 'BITCOIN':
+  case 'BITCOINS':
+  case 'XBT':      return 'BTC';
+  case 'CLAMS':
+  case 'CLAMCOINS':
+  case 'CLAMCOIN':
+  case 'CORNEREDCOIN':
+  case 'CORNEREDCOINS':
+  case 'JUSTDICECOIN':
+  case 'JD-COIN':
+  case 'JDCOIN':   return 'CLAM';
+  case 'DOGECOIN':
+  case 'DOGECOINS':
+  case 'XDG':      return 'DOGE';
+  case 'LITECOINS':
+  case 'LITECOIN': return 'LTC';
+  case 'REDDCOINS':
+  case 'REDDCOIN': return 'RDD';
+  case '子犬':     return 'KOINU';
+  default:         return sym.toUpperCase();
   }
 }
 

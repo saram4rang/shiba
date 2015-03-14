@@ -445,6 +445,7 @@ Shiba.prototype.onCmdConvert = function(msg, conv) {
         case 'USD': return "$"   + num + mod;
         case 'BIT': return num == 1 && mod == '' ? "1 Bit" : num + mod + " Bits";
         case 'SAT': return num + mod + " satoshi";
+        case 'KOINU': return num + mod + " 子犬";
         /* Use suffix symbols for these if no modifier is
          * provided. Otherwise use the ISO code. */
         case 'PLN':

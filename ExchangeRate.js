@@ -59,6 +59,8 @@ exports.getRates = function(cb) {
       importpolo('LTC');
       importpolo('RDD');
 
+      rates.KOINU = 1e8 * rates.DOGE;
+
       return cb(null, rates);
     });
 }
