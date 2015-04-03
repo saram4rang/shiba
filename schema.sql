@@ -1,6 +1,9 @@
 CREATE TABLE users (
   id bigint NOT NULL,
   username text NOT NULL,
+  gross_profit bigint DEFAULT 0 NOT NULL,
+  net_profit bigint DEFAULT 0 NOT NULL,
+  games_played bigint DEFAULT 0 NOT NULL,
   -- The timestamp indicates when we have seen the user for the first time.
   created timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -98,7 +101,7 @@ CREATE TABLE plays (
   user_id bigint NOT NULL,
   cash_out bigint,
   game_id bigint NOT NULL,
-  bet bigint,
+  bet bigint NOT NULL,
   bonus bigint
 );
 CREATE SEQUENCE plays_id_seq
@@ -314,3 +317,54 @@ CREATE TABLE blocknotifications (
 ALTER TABLE ONLY blocknotifications
   ADD CONSTRAINT bv_blocknotifications_pkey
   PRIMARY KEY (username);
+
+CREATE OR REPLACE FUNCTION userstats_trigger()
+  RETURNS trigger AS $$
+
+  DECLARE
+    delta_user_id bigint;
+    delta_gross_profit bigint;
+    delta_net_profit bigint;
+    delta_games_played bigint;
+
+  -- Work out the increment/decrement amount(s).
+  BEGIN
+    IF (TG_OP = 'INSERT') THEN
+      delta_user_id = NEW.user_id;
+      delta_gross_profit = COALESCE(NEW.cash_out-NEW.bet,0::numeric) + COALESCE(NEW.bonus,0::numeric);
+      delta_net_profit   = COALESCE(NEW.cash_out, 0::numeric) + COALESCE(NEW.bonus, 0::numeric) - NEW.bet;
+      delta_games_played = 1;
+    ELSIF (TG_OP = 'DELETE') THEN
+      delta_user_id = OLD.user_id;
+      delta_gross_profit = - (COALESCE(OLD.cash_out-OLD.bet,0::numeric) + COALESCE(OLD.bonus,0::numeric));
+      delta_net_profit   = - (COALESCE(OLD.cash_out, 0::numeric) + COALESCE(OLD.bonus, 0::numeric) - OLD.bet);
+      delta_games_played = - 1;
+    ELSIF (TG_OP = 'UPDATE') THEN
+      IF ( OLD.user_id != NEW.user_id) THEN
+        RAISE EXCEPTION
+          'Update of user_id : % -> % not allowed', OLD.user_id, NEW.user_id;
+      END IF;
+
+      delta_user_id = OLD.user_id;
+      delta_gross_profit =
+          COALESCE(NEW.cash_out-NEW.bet,0::numeric) + COALESCE(NEW.bonus,0::numeric)
+        - (COALESCE(OLD.cash_out-OLD.bet,0::numeric) + COALESCE(OLD.bonus,0::numeric));
+      delta_net_profit   =
+          COALESCE(NEW.cash_out, 0::numeric) + COALESCE(NEW.bonus, 0::numeric) - NEW.bet
+        - (COALESCE(OLD.cash_out, 0::numeric) + COALESCE(OLD.bonus, 0::numeric) - OLD.bet);
+      delta_games_played = 0;
+    END IF;
+
+    UPDATE users
+      SET gross_profit = gross_profit + delta_gross_profit,
+          net_profit   = net_profit + delta_net_profit,
+          games_played = games_played + delta_games_played
+      WHERE id = delta_user_id;
+
+    RETURN NEW;
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER userstats_trigger
+AFTER INSERT OR UPDATE OR DELETE ON plays
+    FOR EACH ROW EXECUTE PROCEDURE userstats_trigger();
