@@ -330,8 +330,19 @@ Shiba.prototype.onCmdLick = function(msg, user) {
 
 Shiba.prototype.onCmdSeen = function(msg, user) {
   var self = this;
-  user = user.toLowerCase();
-  user = user.replace(/^\s+|\s+$/g,'');
+  user = user.toLowerCase().replace(/^\s+|\s+$/g,'');
+
+  // Make sure the username is valid
+  if (Lib.isInvalidUsername(user)) {
+    self.client.doSay('such name. very invalid');
+    return;
+  }
+
+  // In case a user asks for himself.
+  if (user === msg.username.toLowerCase()) {
+    self.client.doSay('go find a mirror @' + msg.username);
+    return;
+  }
 
   // Special treatment of block.
   if (user === 'block') return this.onCmdBlock(msg);
