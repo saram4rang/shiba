@@ -5,28 +5,27 @@
   "engines": {
     "node": "~0.10.31"
   },
-  "repository" :
-  { "type" : "git",
-    "url"  : "https://github.com/kungfuant/shiba.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kungfuant/shiba.git"
   },
   "dependencies": {
     "async":               "^0.9.0",
-    "async-cache":         "~0.1.5",
-    "autobahn":            "^0.9.5",
+    "async-cache":         "^0.1.5",
+    "autobahn":            "^0.9.6",
     "better-assert":       "^1.0.2",
-    "crypto-js":           "~3.1.2-5",
-    "debug":               "~2.1.1",
-    "lodash":              "^2.4.1",
-    "microtime":           "~1.2.0",
-    "money":               "~0.2.0",
+    "debug":               "^2.1.3",
+    "lodash":              "^3.6.0",
+    "microtime":           "^1.3.0",
+    "money":               "^0.2.0",
     "open-exchange-rates": "^0.3.0",
-    "pg":                  "^4.2.0",
+    "pg":                  "^4.3.0",
     "poloniex.js":         "^0.0.6",
-    "request":             "~2.53.0",
-    "requirejs":           "~2.1.16",
-    "socket.io-client":    "^1.2.0",
+    "request":             "^2.55.0",
+    "requirejs":           "^2.1.17",
+    "socket.io-client":    "^1.3.5",
     "unshort":             "^0.0.4",
-    "ws":                  "^0.7.0"
+    "ws":                  "^0.7.1"
   },
   "devDependencies": {
     "jison": "^0.4.15"
