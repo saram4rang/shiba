@@ -5,6 +5,9 @@ var pg         = require('pg');
 var debug      = require('debug')('shiba:db');
 var debugpg    = require('debug')('shiba:db:pg');
 
+pg.defaults.poolSize        = 3;
+pg.defaults.poolIdleTimeout = 500000;
+
 pg.types.setTypeParser(20, function(val) { // parse int8 as an integer
   return val === null ? null : parseInt(val);
 });
