@@ -1,11 +1,11 @@
 var fs           =  require('fs');
 var async        =  require('async');
-var unshort      =  require('unshort');
 var fx           =  require('money');
 var _            =  require('lodash');
 var profanity    =  require('./profanity');
 var ExchangeRate =  require('./ExchangeRate');
 var Blockchain   =  require('./Blockchain');
+var Unshort      =  require('./Unshort');
 
 var Client       =  require('./Client');
 var Convert      =  require('./Convert');
@@ -16,7 +16,7 @@ var Pg           =  require('./Pg');
 
 var debug        =  require('debug')('shiba');
 var debugblock   =  require('debug')('shiba:blocknotify');
-var debugunshort =  require('debug')('shiba:unshort');
+var debugautomute =  require('debug')('shiba:automute');
 
 // Command syntax
 var cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -165,45 +165,29 @@ Shiba.prototype.onSay = function(msg) {
   // Extract a list of URLs.
   // TODO: The regular expression could be made more intelligent.
   var urls = msg.message.match(/https?:\/\/[^\s]+/ig) || [];
-
-  var urls2 = msg.message.match(/(\s|^)bit.ly\/[^s]+/ig);
-  if (urls2) {
-    for (var i = 0; i < urls2.length; ++i)
-      urls2[i] = 'http://' + urls2[i].replace(/^\s+/g,'');
-    urls = urls.concat(urls2);
-  }
-  var urls3 = msg.message.match(/(\s|^)goo.gl\/[^s]+/ig);
-  if (urls3) {
-    for (var i = 0; i < urls3.length; ++i)
-      urls3[i] = 'http://' + urls3[i].replace(/^\s+/g,'');
-    urls = urls.concat(urls3);
-  }
+  var urls2 = msg.message.match(/(\s|^)(bit.ly|vk.cc|goo.gl)\/[^\s]+/ig) || [];
+  urls2 = urls2.map(function(x) { return x.replace(/^\s*/,'http:\/\/'); })
+  urls = urls.concat(urls2);
 
   if (urls.length > 0)
-    debugunshort('Found urls:' + JSON.stringify(urls));
+    debugautomute('Found urls:' + JSON.stringify(urls));
 
   // Unshorten extracted URLs.
   var self = this;
-  async.map(urls, unshort, function(err, urls2) {
-    debugunshort('Unshorted finished: ' + JSON.stringify(urls2));
+  Unshort.unshorts(urls, function(err, urls2) {
+    debugautomute('Unshort finished: ' + JSON.stringify(urls2));
+    urls = urls.concat(urls2 || []);
 
-    if (err) {
-      console.error("Got error while unshortening: '" + err + "'");
-      console.error("Urls was:", JSON.stringify(urls));
-      console.error("Urls2 is:", JSON.stringify(urls2));
-    }
-    urls = urls.concat(urls2);
-
-    debugunshort('Url list: ' + JSON.stringify(urls));
-    for (var i = 0; i < urls.length; ++i) {
+    debugautomute('Url list: ' + JSON.stringify(urls));
+    for (var i in urls) {
       var url    = urls[i];
       if (typeof url != 'string') continue;
-      debugunshort('Checking url: ' + url);
+      debugautomute('Checking url: ' + url);
 
       // Run the regular expressions against the unshortened url.
       for (var r = 0; r < self.automutes.length; ++r)
         if (url.match(self.automutes[r])) {
-          debugunshort('URL matched ' + self.automutes[r]);
+          debugautomute('URL matched ' + self.automutes[r]);
           return self.client.doMute(msg.username, '72h');
         }
     }
