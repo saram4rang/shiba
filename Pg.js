@@ -158,7 +158,11 @@ var userCache = new AsyncCache({
 function getUser(username, cb) {
   if (Lib.isInvalidUsername(username))
     return cb('USERNAME_INVALID');
-  return userCache.get.bind(userCache);
+
+  userCache.get(username, function (err, res) {
+    if (err) console.error('[Pg.getUser] ERROR:', err);
+    cb(err,res);
+  });
 }
 
 /*
