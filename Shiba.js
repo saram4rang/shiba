@@ -160,7 +160,7 @@ Shiba.prototype.onSay = function(msg) {
   // Match entire message against the regular expressions.
   for (var r = 0; r < this.automutes.length; ++r)
     if (msg.message.match(this.automutes[r]))
-      return this.client.doMute(msg.username, '12h');
+      return this.client.doMute(msg.username, '36h');
 
   // Extract a list of URLs.
   // TODO: The regular expression could be made more intelligent.
@@ -204,7 +204,7 @@ Shiba.prototype.onSay = function(msg) {
       for (var r = 0; r < self.automutes.length; ++r)
         if (url.match(self.automutes[r])) {
           debugunshort('URL matched ' + self.automutes[r]);
-          return self.client.doMute(msg.username, '48h');
+          return self.client.doMute(msg.username, '72h');
         }
     }
 
@@ -240,9 +240,9 @@ Shiba.prototype.onCmd = function(msg, cmd, rest) {
   for (var i = 0; i < messages.length; ++i)
     if (messages[i].message.match(cmdReg)) ++rate;
 
-  if (rate >= 4)
+  if (rate >= 5)
     return this.client.doMute(msg.username, '5m');
-  else if (rate >= 3)
+  else if (rate >= 4)
     return this.client.doSay('bites ' + msg.username);
 
   switch(cmd.toLowerCase()) {
