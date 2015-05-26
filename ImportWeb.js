@@ -111,7 +111,13 @@ function html2json(html) {
     return gameinfo;
 }
 
+var lastFetch = -1;
+
 function getGameInfo(id, cb) {
+  if (Date.now() - lastFetch < 400)
+    return setTimeout(function() { getGameInfo(id,cb); }, 300);
+  lastFetch = Date.now();
+
   var url =
     Config.webserver_prot + '://' +
     Config.webserver_host +
