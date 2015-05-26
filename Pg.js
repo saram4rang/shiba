@@ -4,6 +4,7 @@ var assert     = require('better-assert');
 var pg         = require('pg');
 var debug      = require('debug')('shiba:db');
 var debugpg    = require('debug')('shiba:db:pg');
+var Lib        = require('./Lib');
 
 pg.defaults.poolSize        = 3;
 pg.defaults.poolIdleTimeout = 500000;
@@ -100,7 +101,9 @@ function transaction(runner, cb) {
 
 function getOrCreateUser(username, cb) {
   debug('Getting user: ' + username);
-  assert(username);
+
+  if (Lib.isInvalidUsername(username))
+    return cb('USERNAME_INVALID');
 
   transaction(function(client, cb) {
     var q = 'SELECT * FROM users WHERE lower(username) = lower($1)';
@@ -130,7 +133,9 @@ function getOrCreateUser(username, cb) {
 
 function getExistingUser(username, cb) {
   debug('Getting user: ' + username);
-  assert(username);
+
+  if (Lib.isInvalidUsername(username))
+    return cb('USERNAME_INVALID');
 
   var q = 'SELECT * FROM users WHERE lower(username) = lower($1)';
   var p = [username];
@@ -153,9 +158,11 @@ var userCache = new AsyncCache({
   load : getOrCreateUser
 });
 
-var getUser
-  = exports.getUser
-  = userCache.get.bind(userCache);
+function getUser(username, cb) {
+  if (Lib.isInvalidUsername(username))
+    return cb('USERNAME_INVALID');
+  return userCache.get.bind(userCache);
+}
 
 /*
 CREATE TABLE chats (
