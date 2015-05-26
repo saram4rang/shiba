@@ -11,7 +11,7 @@ var Client       =  require('./Client');
 var Convert      =  require('./Convert');
 var Crash        =  require('./Crash');
 var Lib          =  require('./Lib');
-var Config       =  require('./Config')();
+var Config       =  require('./Config');
 var Pg           =  require('./Pg');
 
 var debug        =  require('debug')('shiba');

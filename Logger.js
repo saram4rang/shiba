@@ -3,7 +3,7 @@ var fs           =  require('fs');
 var Client       =  require('./Client');
 var Lib          =  require('./Lib');
 var Pg           =  require('./Pg');
-var Config       =  require('./Config')('logger');
+var Config       =  require('./Config');
 
 function ensureDirSync(dir) {
   try { fs.mkdirSync(dir); }

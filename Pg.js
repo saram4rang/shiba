@@ -4,6 +4,7 @@ var assert     = require('better-assert');
 var pg         = require('pg');
 var debug      = require('debug')('shiba:db');
 var debugpg    = require('debug')('shiba:db:pg');
+var Config     = require('./Config')
 var Lib        = require('./Lib');
 
 pg.defaults.poolSize        = 3;
@@ -13,13 +14,9 @@ pg.types.setTypeParser(20, function(val) { // parse int8 as an integer
   return val === null ? null : parseInt(val);
 });
 
-var databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl)
-  throw new Error('must set DATABASE_URL environment var');
-
 // cb is called with (err, client, done)
 function connect(cb) {
-  return pg.connect(databaseUrl, cb);
+  return pg.connect(Config.DATABASE, cb);
 }
 
 function query(query, params, cb) {

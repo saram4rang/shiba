@@ -5,7 +5,7 @@ var fs      = require('fs');
 var debug   = require('debug')('shiba:import');
 var pg      = require('pg');
 
-var Config  = require('./Config')('production');
+var Config  = require('./Config');
 var Pg      = require('./Pg');
 
 function ensureDirSync(dir) {
@@ -118,12 +118,7 @@ function getGameInfo(id, cb) {
     return setTimeout(function() { getGameInfo(id,cb); }, 300);
   lastFetch = Date.now();
 
-  var url =
-    Config.webserver_prot + '://' +
-    Config.webserver_host +
-    (Config.webserver_port ? ':' + Config.webserver_port : '') +
-    '/game/' + id;
-
+  var url = Config.WEBSERVER + '/game/' + id;
   request(url, function (err, res, body) {
     if (err || res.statusCode != 200)
       return cb(err || res.statusCode);

@@ -6,11 +6,11 @@ var debug      = require('debug')('shiba:exchangerate');
 
 var Bitstamp   = require('./Bitstamp');
 var Poloniex   = require('./Poloniex');
-var Config     = require('./Config')();
+var Config     = require('./Config');
 
 // Oxr free plan only allows USD as the base currency.
 oxr.base = 'USD';
-oxr.set({ app_id: Config.oxr_app_id });
+oxr.set({ app_id: Config.OXR_APP_ID });
 
 var ratesCache = new AsyncCache({
   maxAge: 1000 * 60 * 60, // 1 hour

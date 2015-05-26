@@ -31,7 +31,7 @@
     "jison": "^0.4.15"
   },
   "scripts": {
-    "start": "node Shiba.js",
+    "start": "env $(cat .env | xargs) node Shiba.js",
     "build": "jison -p lr Convert.jison"
   }
 }

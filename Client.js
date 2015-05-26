@@ -2,6 +2,7 @@ var _           =  require('lodash');
 var Events      =  require('events');
 var util        =  require('util');
 var microtime   =  require('microtime');
+var request     =  require('request');
 var SocketIO    =  require('socket.io-client');
 var debug       =  require('debug')('shiba:client');
 var debuggame   =  require('debug')('shiba:game');
@@ -69,13 +70,9 @@ function Client(config) {
 
   // Save configuration and stuff.
   this.config = config;
-  var gameHost =
-    config.gameserver_prot + '://' +
-    config.gameserver_host + ':' +
-    config.gameserver_port;
 
-  debug("Setting up connection to", gameHost);
-  this.socket = SocketIO(gameHost);
+  debug("Setting up connection to %s", config.GAMESERVER);
+  this.socket = SocketIO(config.GAMESERVER);
   this.socket.on('error', this.onError.bind(this));
   this.socket.on('connect', this.onConnect.bind(this));
   this.socket.on('disconnect', this.onDisconnect.bind(this));
@@ -99,8 +96,7 @@ Client.prototype.onConnect = function(data) {
 
   var self = this;
   self.emit('connect');
-  getOtt(this.config, function(ott) {
-
+  getOtt(this.config, function(err, ott) {
     debug("Received one time token: " + ott);
     debug("Joining the game");
 
@@ -577,32 +573,16 @@ Client.prototype.getGameInfo = function() {
 
 // Get a one time token from the server to join the game.
 function getOtt(config, cb) {
-  if (!config.session) return cb(null);
+  if (!config.SESSION) return cb(null, null);
 
-  var cookie  = "id=" + config.session;
-  var options =
-    {
-      hostname: config.webserver_host,
-      port:     config.webserver_port,
-      path: '/ott',
-      method: 'POST',
-      headers:
-      { 'connection':     'keep-alive',
-        'content-length': 0,
-        'content-type':   'text/plain',
-        'cookie':         cookie
-      }
-    };
   debug("Requesting one time token");
 
-  console.assert(config.webserver_prot === 'http' ||
-                 config.webserver_prot === 'https');
-  var http = require(config.webserver_prot);
-  var req = http.request(options, function(res) {
-    res.on('data', cb);
-  });
-  req.end();
-  req.on('error', function(e) {
-    console.error('Error getting ott:' + e);
+  var cookie = request.cookie('id=' + config.SESSION);
+  var url    = config.WEBSERVER + '/ott';
+  var jar    = request.jar();
+  jar.setCookie(cookie, url);
+
+  var req = request.post({url:url, jar:jar}, function(err, res, body) {
+    return cb(err,body);
   });
 }
