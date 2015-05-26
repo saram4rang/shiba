@@ -19,10 +19,10 @@ var parserconfig =
   { game_id: { selector: 'div.content strong' },
     crashpoint:
      { selector: 'div.content p:first',
-       ignore: 'b' },
+       remove: 'b' },
     created:
      { selector: 'div.content p:nth-of-type(2)',
-       ignore: 'b,small' },
+       remove: 'b,small' },
     players:
      { selector: 'table.user-table tbody tr td:first-child',
        multiple: true },
