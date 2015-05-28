@@ -7,7 +7,7 @@ const debugautomute = require('debug')('shiba:automute');
 
 const profanity    =  require('./profanity');
 const Blockchain   =  require('./Blockchain');
-const Unshort      =  require('./Unshort');
+const Unshort      =  require('./Util/Unshort');
 
 const Client       =  require('./Client');
 const Crash        =  require('./Crash');
@@ -52,8 +52,8 @@ function Shiba() {
 Shiba.prototype.setupChatHook = function() {
   var self = this;
   self.client.on('msg', function(msg) {
-    if (msg.type != 'say') return;
-    self.onSay(msg);
+    if (msg.type !== 'say') return;
+    co(function*(){ yield self.onSay(msg); });
   });
 };
 
@@ -155,65 +155,64 @@ Shiba.prototype.getChatMessages = function(username, after) {
   return messages;
 };
 
-Shiba.prototype.onSay = function(msg) {
-  if (msg.username === this.client.username) return;
+Shiba.prototype.onSay = function*(msg) {
+  if (msg.username === this.client.username) return null;
 
   // Match entire message against the regular expressions.
-  for (var r = 0; r < this.automutes.length; ++r)
+  for (let r = 0; r < this.automutes.length; ++r)
     if (msg.message.match(this.automutes[r]))
       return this.client.doMute(msg.username, '36h');
 
   // Extract a list of URLs.
   // TODO: The regular expression could be made more intelligent.
-  var urls = msg.message.match(/https?:\/\/[^\s]+/ig) || [];
-  var urls2 = msg.message.match(/(\s|^)(bit.ly|vk.cc|goo.gl)\/[^\s]+/ig) || [];
-  urls2 = urls2.map(function(x) { return x.replace(/^\s*/,'http:\/\/'); })
-  urls = urls.concat(urls2);
+  let urls  = msg.message.match(/https?:\/\/[^\s]+/ig) || [];
+  let urls2 = msg.message.match(/(\s|^)(bit.ly|vk.cc|goo.gl)\/[^\s]+/ig) || [];
+  urls2     = urls2.map(x => x.replace(/^\s*/,'http:\/\/'));
+  urls      = urls.concat(urls2);
 
   if (urls.length > 0)
     debugautomute('Found urls:' + JSON.stringify(urls));
 
   // Unshorten extracted URLs.
-  var self = this;
-  Unshort.unshorts(urls, function(err, urls2) {
-    debugautomute('Unshort finished: ' + JSON.stringify(urls2));
-    urls = urls.concat(urls2 || []);
+  urls2 = yield Unshort.unshorts(urls);
+  debugautomute('Unshort finished: ' + JSON.stringify(urls2));
 
-    debugautomute('Url list: ' + JSON.stringify(urls));
-    for (var i in urls) {
-      var url    = urls[i];
-      if (typeof url != 'string') continue;
-      debugautomute('Checking url: ' + url);
+  urls  = urls.concat(urls2 || []);
+  debugautomute('Url list: ' + JSON.stringify(urls));
 
-      // Run the regular expressions against the unshortened url.
-      for (var r = 0; r < self.automutes.length; ++r)
-        if (url.match(self.automutes[r])) {
-          debugautomute('URL matched ' + self.automutes[r]);
-          return self.client.doMute(msg.username, '72h');
-        }
-    }
+  for (let i in urls) {
+    let url    = urls[i];
+    if (typeof url !== 'string') continue;
+    debugautomute('Checking url: ' + url);
 
-    var after, messages;
-    // Rate limiter < 4 messages in 1s
-    after    = new Date(Date.now() - 1000);
-    messages = self.getChatMessages(msg.username, after);
-    if (messages.length >= 4) return self.client.doMute(msg.username, '15m');
+    // Run the regular expressions against the unshortened url.
+    for (let r = 0; r < this.automutes.length; ++r)
+      if (url.match(this.automutes[r])) {
+        debugautomute('URL matched ' + self.automutes[r]);
+        return this.client.doMute(msg.username, '72h');
+      }
+  }
 
-    // Rate limiter < 5 messages in 5s
-    after    = new Date(Date.now() - 5000);
-    messages = self.getChatMessages(msg.username, after);
-    if (messages.length >= 5) return self.client.doMute(msg.username, '15m');
+  let after, messages;
+  // Rate limiter < 4 messages in 1s
+  after    = new Date(Date.now() - 1000);
+  messages = this.getChatMessages(msg.username, after);
+  if (messages.length >= 4) return self.client.doMute(msg.username, '15m');
 
-    // Rate limiter < 8 messages in 12s
-    after    = new Date(Date.now() - 12000);
-    messages = self.getChatMessages(msg.username, after);
-    if (messages.length >= 8) return self.client.doMute(msg.username, '15m');
+  // Rate limiter < 5 messages in 5s
+  after    = new Date(Date.now() - 5000);
+  messages = self.getChatMessages(msg.username, after);
+  if (messages.length >= 5) return self.client.doMute(msg.username, '15m');
 
-    // Everything checked out fine so far. Continue with the command
-    // processing phase.
-    var cmdMatch = msg.message.match(cmdReg);
-    if (cmdMatch) self.onCmd(msg, cmdMatch[1], cmdMatch[2]);
-  });
+  // Rate limiter < 8 messages in 12s
+  after    = new Date(Date.now() - 12000);
+  messages = self.getChatMessages(msg.username, after);
+  if (messages.length >= 8) return self.client.doMute(msg.username, '15m');
+
+  // Everything checked out fine so far. Continue with the command
+  // processing phase.
+  let cmdMatch = msg.message.match(cmdReg);
+  if (cmdMatch) self.onCmd(msg, cmdMatch[1], cmdMatch[2]);
 };
 
 Shiba.prototype.onCmd = function(msg, cmd, rest) {
