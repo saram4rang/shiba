@@ -15,7 +15,7 @@ oxr.set({ app_id: Config.OXR_APP_ID });
 
 const ratesCache = new Cache({
   maxAge: 1000 * 60 * 60, // 1 hour
-  load: function*(key) {
+  load: function*() {
     debug('Downloading fiat exchange rates');
     yield oxr.latest.bind(oxr);
     return oxr.rates;
@@ -26,7 +26,6 @@ function* getFiatRates() {
   return yield ratesCache.get('');
 }
 
-exports.getRates = getRates;
 function* getRates() {
   debug('Getting rates');
 
@@ -55,17 +54,18 @@ function* getRates() {
 
   return rates;
 }
+exports.getRates = getRates;
 
-exports.getSymbols = getSymbols;
 function* getSymbols() {
   let rates = yield getRates();
   return Object.keys(rates);
 }
+exports.getSymbols = getSymbols;
 
-exports.convert = convert;
 function* convert(from, to, amount) {
   let rates = yield getRates();
   fx.rates = rates;
   fx.base  = oxr.base;
   return fx(amount).convert({from:from, to:to});
 }
+exports.convert = convert;

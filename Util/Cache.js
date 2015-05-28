@@ -10,8 +10,7 @@ function Cache(opts) {
 
   opts.load = function(key, cb) {
     co(self.gen(key))
-      .then(function(res) { cb(null,res); },
-            function(err) { cb(err); });
+      .then(function(res) { cb(null,res); }, cb);
   };
 
   self.cache = new AsyncCache(opts);

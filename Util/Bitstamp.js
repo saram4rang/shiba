@@ -6,7 +6,7 @@ const debug   = require('debug')('shiba:bitstamp');
 
 const BITSTAMP_TICKER = 'https://www.bitstamp.net/api/ticker/';
 
-function* getTicker(key) {
+function* getTicker() {
   debug('Requesting price ticker');
   try {
     let req = yield request(BITSTAMP_TICKER);

@@ -11,9 +11,10 @@ exports.ticker = ticker;
   const Polo = require('poloniex.js');
   const polo = new Polo();
   polo.getTicker(function (err, data) {
-    if (err)
-      return console.error('Error getting Poloniex price ticker',
-                           err);
+    if (err) {
+      console.error('Error getting Poloniex price ticker', err);
+      return;
+    }
 
     debug('Importing initial ticker data');
     for (let pair in data) {
@@ -38,7 +39,7 @@ const connection = new autobahn.Connection({
   realm: "realm1"
 });
 
-function tickerEvent (args, kwargs) {
+function tickerEvent (args) {
   debug('Ticker event: %s', args[0]);
 
   ticker[args[0]] =
@@ -57,10 +58,10 @@ function tickerEvent (args, kwargs) {
 connection.onopen = function (session) {
   debug('Connection established.');
   session.subscribe('ticker', tickerEvent);
-}
+};
 
 connection.onclose = function (reason, details) {
   debug('Connection closed: %s (%s)', reason, JSON.stringify(details));
-}
+};
 
 connection.open();
