@@ -1,8 +1,6 @@
 'use strict';
 
 const co           =  require('co');
-const fs           =  require('fs');
-const async        =  require('async');
 const debug        =  require('debug')('shiba');
 const debugblock   =  require('debug')('shiba:blocknotify');
 const debugautomute = require('debug')('shiba:automute');
@@ -27,32 +25,28 @@ function Shiba() {
   let self = this;
   self.cmdConvert = new CmdConvert();
 
-  async.parallel(
-    [ Pg.getLatestBlock,
-      Pg.getBlockNotifications,
-      Pg.getAutomutes
-    ], function (err, val) {
-      // Abort immediately on startup.
-      if (err) throw err;
+  co(function*(){
+    // Last received block information.
+    self.block = yield Pg.getLatestBlock();
+    // Awkward name for an array that holds names of users which
+    // will be when a new block has been mined.
+    self.blockNotifyUsers = yield Pg.getBlockNotifications();
 
-        // Last received block information.
-      self.block = val[0];
-      // Awkward name for an array that holds names of users which
-      // will be when a new block has been mined.
-      self.blockNotifyUsers = val[1];
+    // List of automute regexps
+    self.automutes = yield Pg.getAutomutes();
 
-      // List of automute regexps
-      self.automutes = val[2];
+    // Connect to the site.
+    self.client = new Client(Config);
 
-      // Connect to the site.
-      self.client = new Client(Config);
-
-      self.setupChatHook();
-      // self.setupConsoleLog();
-      // self.setupLossStreakComment();
-      self.setupScamComment();
-      self.setupBlockchain();
-    });
+    self.setupChatHook();
+    // self.setupConsoleLog();
+    // self.setupLossStreakComment();
+    self.setupScamComment();
+    self.setupBlockchain();
+  }).catch(function(err) {
+    // Abort immediately on startup.
+    throw err;
+  });
 }
 
 Shiba.prototype.setupChatHook = function() {
@@ -125,8 +119,12 @@ Shiba.prototype.onBlock = function(block) {
       notification: new Date()
     };
 
-  Pg.putBlock(newBlock, function(err) {
-    if (err) console.error('Error putting block:', err);
+  co(function*(){
+    try {
+      yield Pg.putBlock(newBlock);
+    } catch(err) {
+      console.error('Error putting block:', err);
+    }
   });
 
   // Check if block is indeed new and only signal in this case.
