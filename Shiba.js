@@ -1,29 +1,32 @@
-var fs           =  require('fs');
-var async        =  require('async');
-var fx           =  require('money');
-var _            =  require('lodash');
-var profanity    =  require('./profanity');
-var ExchangeRate =  require('./ExchangeRate');
-var Blockchain   =  require('./Blockchain');
-var Unshort      =  require('./Unshort');
+'use strict';
 
-var Client       =  require('./Client');
-var Convert      =  require('./Convert');
-var Crash        =  require('./Crash');
-var Lib          =  require('./Lib');
-var Config       =  require('./Config');
-var Pg           =  require('./Pg');
+const co           =  require('co');
+const fs           =  require('fs');
+const async        =  require('async');
+const debug        =  require('debug')('shiba');
+const debugblock   =  require('debug')('shiba:blocknotify');
+const debugautomute = require('debug')('shiba:automute');
 
-var debug        =  require('debug')('shiba');
-var debugblock   =  require('debug')('shiba:blocknotify');
-var debugautomute =  require('debug')('shiba:automute');
+const profanity    =  require('./profanity');
+const Blockchain   =  require('./Blockchain');
+const Unshort      =  require('./Unshort');
+
+const Client       =  require('./Client');
+const Crash        =  require('./Crash');
+const Lib          =  require('./Lib');
+const Config       =  require('./Config');
+const Pg           =  require('./Pg');
+
+const CmdConvert   =  require('./Cmd/Convert');
 
 // Command syntax
-var cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
+const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
 
 function Shiba() {
 
-  var self = this;
+  let self = this;
+  self.cmdConvert = new CmdConvert();
+
   async.parallel(
     [ Pg.getLatestBlock,
       Pg.getBlockNotifications,
@@ -398,124 +401,9 @@ Shiba.prototype.onCmdCrash = function(msg, cmd) {
 };
 
 Shiba.prototype.onCmdConvert = function(msg, conv) {
-  var self = this;
-  conv = conv.replace(/^\s+|\s+$/g,'');
-
-  try {
-    conv = Convert.parser.parse(conv);
-    debug('Convert parse result: ' + JSON.stringify(conv));
-
-    ExchangeRate.getRates(function(err, rates) {
-      if (err) return self.client.doSay('wow. such exchange rate fail');
-
-      function modFactor(mod) {
-        switch(mod) {
-        case 'm':
-          return 1e-3;
-        case 'k':
-        case 'K':
-          return 1e3;
-        case 'M':
-          return 1e6;
-        default:
-          return 1;
-        }
-      }
-
-      /* Pretty print an amount. We try to make it as pretty as
-         possible by replacing ISO codes with currency symbols.
-      */
-      function pretty(iso, num, mod) {
-        /* In case somebody specifically asked for milli we
-           only print the ISO code variant.
-        */
-        if (mod == 'm')
-          return num + " m" + iso;
-
-        switch (iso) {
-        case 'EUR': return "€"   + num + mod;
-        case 'GBP': return "£"   + num + mod;
-        case 'IDR': return "Rp " + num + mod;
-        case 'INR': return "₹"   + num + mod;
-        case 'USD': return "$"   + num + mod;
-        case 'BIT': return num == 1 && mod == '' ? "1 Bit" : num + mod + " Bits";
-        case 'SAT': return num + mod + " satoshi";
-        case 'KOINU': return num + mod + " 子犬";
-        /* Use suffix symbols for these if no modifier is
-         * provided. Otherwise use the ISO code. */
-        case 'PLN':
-          if (modFactor(mod) == 1) {
-            return num + 'zł';
-          } else {
-            return num + mod + ' PLN';
-          }
-        case 'VND':
-          if (modFactor(mod) == 1) {
-            return num + '₫';
-          } else {
-            return num + mod + ' VND';
-          }
-        case 'XAG':
-          if (modFactor(mod) == 1) {
-            return num + ' oz. tr. of silver';
-          } else {
-            return num + mod + ' XAG';
-          }
-        case 'XAU':
-          if (modFactor(mod) == 1) {
-            return num + ' oz. tr. of gold';
-          } else {
-            return num + mod + ' XAU';
-          }
-        default:
-          return num + mod + " " + iso;
-        }
-      }
-
-      fx.rates = rates;
-      var result = fx.convert(conv.amount, {from: conv.fromiso, to: conv.toiso});
-      result *= modFactor(conv.frommod);
-      result /= modFactor(conv.tomod);
-
-      /* Pretty print source. We reuse the original amount string for
-         grouping.
-      */
-      var prettySource = pretty(conv.fromiso, conv.str, conv.frommod);
-
-      /* Pretty print the converted amount. */
-      /* We strip off some places because they only clutter the output:
-            93473434.4234345  ->  93473434
-            0.000243456487    ->  0.00024346
-       */
-
-      if (result != 0) {
-        /* Scale using the exponent, but not more than 5 integral places. */
-        var e = Math.min(Math.floor(Math.log(Math.abs(result)) / Math.log(10)),5);
-        result = Math.round(result / Math.pow(10, e-5));
-        /* Make sure that the exponent is positive during rescaling. */
-        result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
-        var prec = Math.max(0, 5-e);
-        if (prec > 15) {
-          // Really small number and lots of places to show. Instead of printing
-          // them all we rather accept scientific notation. We are already more
-          // liberal than the generic toString() conversion.
-          result = '' + result;
-        } else {
-          result = result.toFixed(prec);
-        }
-        /* Remove unnecessary zeroes. */
-        result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
-      } else {
-        result = '0';
-      }
-      var prettyResult = pretty(conv.toiso, result, conv.tomod);
-
-      /* Send everything to the chat. */
-      self.client.doSay(prettySource + " is " + prettyResult);
-    });
-  } catch(e) {
-    return self.client.doSay('wow. very usage failure. such retry');
-  }
+  let client     = this.client;
+  let cmdConvert = this.cmdConvert;
+  co(function*(){ yield cmdConvert.handle(client, msg, conv); });
 };
 
 Shiba.prototype.onCmdBlock = function(msg) {
@@ -532,7 +420,7 @@ Shiba.prototype.onCmdBlock = function(msg) {
   }
 
   // Add the user to the list of users being notified about a new block.
-  if (_.indexOf(this.blockNotifyUsers, msg.username) < 0) {
+  if (this.blockNotifyUsers.indexOf(msg.username) < 0) {
     debugblock("Adding user '%s' to block notfy list", msg.username);
     this.blockNotifyUsers.push(msg.username);
     Pg.putBlockNotification(msg.username, function(err) {});

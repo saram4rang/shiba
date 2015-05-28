@@ -1,20 +1,22 @@
-var autobahn = require('autobahn');
-var debug    = require('debug')('shiba:poloniex');
+'use strict';
 
-var ticker = {};
+const autobahn = require('autobahn');
+const debug    = require('debug')('shiba:poloniex');
+
+const ticker = {};
 exports.ticker = ticker;
 
 /* Pull API to get the initial ticker upon startup. */
 (function() {
-  var Polo     = require('poloniex.js');
-  var polo     = new Polo();
+  const Polo = require('poloniex.js');
+  const polo = new Polo();
   polo.getTicker(function (err, data) {
     if (err)
       return console.error('Error getting Poloniex price ticker',
                            err);
 
     debug('Importing initial ticker data');
-    for (var pair in data) {
+    for (let pair in data) {
       ticker[pair] =
         { last:          parseFloat(data[pair].last),
           lowestAsk:     parseFloat(data[pair].lowestAsk),
@@ -31,7 +33,7 @@ exports.ticker = ticker;
 })();
 
 /* Push API to follow any updates. */
-var connection = new autobahn.Connection({
+const connection = new autobahn.Connection({
   url: "wss://api.poloniex.com",
   realm: "realm1"
 });
