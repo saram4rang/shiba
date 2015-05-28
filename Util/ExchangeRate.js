@@ -1,5 +1,6 @@
 'use strict';
 
+const parallel   = require('co-parallel');
 const fx         = require('money');
 const oxr        = require('open-exchange-rates');
 const debug      = require('debug')('shiba:exchangerate');
@@ -23,7 +24,7 @@ const ratesCache = new Cache({
 });
 
 function* getFiatRates() {
-  return yield ratesCache.get('');
+  return yield* ratesCache.get('');
 }
 
 function* getRates() {
@@ -57,13 +58,13 @@ function* getRates() {
 exports.getRates = getRates;
 
 function* getSymbols() {
-  let rates = yield getRates();
+  let rates = yield* getRates();
   return Object.keys(rates);
 }
 exports.getSymbols = getSymbols;
 
 function* convert(from, to, amount) {
-  let rates = yield getRates();
+  let rates = yield* getRates();
   fx.rates = rates;
   fx.base  = oxr.base;
   return fx(amount).convert({from:from, to:to});

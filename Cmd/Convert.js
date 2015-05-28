@@ -27,7 +27,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
 
   let result;
   try {
-    result = yield ExchangeRate.convert(
+    result = yield* ExchangeRate.convert(
       conv.fromiso, conv.toiso, conv.amount);
     result *= modFactor(conv.frommod);
     result /= modFactor(conv.tomod);

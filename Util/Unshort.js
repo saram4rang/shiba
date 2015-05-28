@@ -5,9 +5,6 @@ const request  = require('co-request');
 const debug    = require('debug')('shiba:unshort');
 const Cache    = require('./Cache');
 
-module.exports.unshort  = unshort;
-module.exports.unshorts = unshorts;
-
 const headers =
   {
     'Accept':'text/html,application/xhtml+xml',
@@ -25,7 +22,7 @@ const unshortCache = new Cache({
     function*(url) {
       debug("Loading '%s'", url);
       let opt = {url:url, headers:headers};
-      let res = yield request(opt);
+      let res = yield* request(opt);
 
       // Return the URL after following all redirects.
       return res.request.href;
@@ -34,7 +31,7 @@ const unshortCache = new Cache({
 
 function* unshort(url) {
   try {
-    let res = yield unshortCache.get(url);
+    let res = yield* unshortCache.get(url);
     debug('Unshortened "%s" -> "%s"', url, res);
     return res;
   } catch(err) {
@@ -45,5 +42,8 @@ function* unshort(url) {
 }
 
 function* unshorts(urls) {
-  return yield parallel(urls.map(unshort));
+  return yield* parallel(urls.map(unshort));
 }
+
+module.exports.unshort  = unshort;
+module.exports.unshorts = unshorts;

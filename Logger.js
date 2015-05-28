@@ -10,7 +10,7 @@ const Config =  require('./Config');
 
 function ensureDirSync(dir) {
   try { fs.mkdirSync(dir); }
-  catch(e) { if (e.code != 'EEXIST') throw e; }
+  catch(e) { if (e.code !== 'EEXIST') throw e; }
 }
 ensureDirSync('gamelogs');
 ensureDirSync('gamelogs/unfinished');
@@ -26,7 +26,7 @@ function setupConsoleLog() {
     process.stdout.write(line);
   });
 
-  client.on('game_started', function(data) {
+  client.on('game_started', function() {
     process.stdout.write(".. ");
   });
 
@@ -35,17 +35,17 @@ function setupConsoleLog() {
     let crash    = Lib.formatFactor(data.game_crash);
     process.stdout.write(" @" + crash + "x " + gameInfo.verified + "\n");
   });
-};
+}
 
 function setupGamelogWriter() {
-  client.on('game_crash', function(data) {
+  client.on('game_crash', function() {
     let gameInfo    = client.getGameInfo();
     let gameLogFile = 'gamelogs/' + gameInfo.game_id + '.json';
     fs.writeFile(gameLogFile, JSON.stringify(gameInfo, null, ' '));
   });
 
   client.on('disconnect', function(data) {
-    if (client.game.state != 'ENDED') {
+    if (client.game.state !== 'ENDED') {
       let gameInfo = client.getGameInfo();
       let gameLogFile = 'gamelogs/unfinished/' + gameInfo.game_id + '.json';
 
@@ -54,7 +54,7 @@ function setupGamelogWriter() {
 
     console.log('Client disconnected |', data, '|', typeof data);
   });
-};
+}
 
 function setupChatlogWriter() {
   let chatDate    = null;
@@ -63,7 +63,7 @@ function setupChatlogWriter() {
   client.on('msg', function(msg) {
     // Write to the chatlog file. We create a file for each date.
     let now = new Date(Date.now());
-    if (!chatDate || now.getUTCDay() != chatDate.getUTCDay()) {
+    if (!chatDate || now.getUTCDay() !== chatDate.getUTCDay()) {
       // End the old write stream for the previous date.
       if (chatStream) chatStream.end();
 
@@ -77,31 +77,31 @@ function setupChatlogWriter() {
     }
     chatStream.write(JSON.stringify(msg) + '\n');
   });
-};
+}
 
 function setupGamelogDb() {
   client.on('game_crash', function(data, info) {
     co(function*() {
       try {
-        yield Pg.putGame(info);
+        yield* Pg.putGame(info);
       } catch(err) {
         console.error('Failed to log game #' + info.game_id + '.\nError:', err);
       }
     });
   });
-};
+}
 
 function setupChatlogDb() {
   client.on('msg', function(msg) {
     co(function*() {
       try {
-        yield Pg.putMsg(msg);
+        yield* Pg.putMsg(msg);
       } catch(err) {
         console.error('Failed to log msg:', msg, '\nError:', err);
       }
     });
   });
-};
+}
 
 setupChatlogWriter();
 setupConsoleLog();

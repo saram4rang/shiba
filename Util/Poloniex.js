@@ -1,7 +1,7 @@
 'use strict';
 
 const autobahn = require('autobahn');
-const debug    = require('debug')('shiba:poloniex');
+const debug    = require('debug')('verbose:poloniex');
 
 const ticker = {};
 exports.ticker = ticker;

@@ -13,7 +13,7 @@ function* getTicker() {
     debug('Response %s', req.body);
     return JSON.parse(req.body);
   } catch(err) {
-    console.error('Getting Bitsamp ticker failed');
+    console.error('Getting Bitstamp ticker failed');
     console.error(err.stack);
     throw err;
   }
@@ -25,11 +25,11 @@ const tickerCache = new Cache({
 });
 
 exports.getInfo = function*() {
-  return yield tickerCache.get('');
+  return yield* tickerCache.get('');
 };
 
 exports.getAveragePrice = function*() {
-  let ticker = yield tickerCache.get('');
+  let ticker = yield* tickerCache.get('');
 
   let ask = parseInt(ticker.ask.replace(/\./g, ''));
   let bid = parseInt(ticker.bid.replace(/\./g, ''));

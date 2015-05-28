@@ -1,13 +1,12 @@
-var _           =  require('lodash');
-var Events      =  require('events');
-var util        =  require('util');
-var WebSocket   =  require('ws');
-var debug       =  require('debug')('shiba:blockchain');
+'use strict';
 
-module.exports = Blockchain;
+const EventEmitter =  require('events').EventEmitter;
+const inherits     =  require('util').inherits;
+const WebSocket    =  require('ws');
+const debug        =  require('debug')('shiba:blockchain');
 
 function Blockchain() {
-  _.extend(this, Events);
+  EventEmitter.call(this);
   this.pingTimeoutTimer  = null;
   this.pingTimeout       = 5000;
   this.pingIntervalTimer = null;
@@ -16,7 +15,7 @@ function Blockchain() {
   this.doConnect();
 }
 
-util.inherits(Blockchain, Events.EventEmitter);
+inherits(Blockchain, EventEmitter);
 
 Blockchain.prototype.doScheduleConnect = function() {
   debug('Reconnecting in %d ms.', this.reconnectInterval);
@@ -32,8 +31,8 @@ Blockchain.prototype.doScheduleConnect = function() {
 
 Blockchain.prototype.doConnect = function() {
   debug('Connecting to Blockchain API.');
-  var self = this;
-  var socket = new WebSocket('wss://ws.blockchain.info/inv');
+  let self = this;
+  let socket = new WebSocket('wss://ws.blockchain.info/inv');
   socket.on('error', self.onError.bind(self));
   socket.on('open', function() {
     self.socket = socket;
@@ -60,7 +59,7 @@ Blockchain.prototype.onOpen = function() {
 
 Blockchain.prototype.onMessage = function(message, flags) {
   try {
-    var data = JSON.parse(message);
+    let data = JSON.parse(message);
     debug("Op received: '%s'.", data.op);
 
     switch (data.op) {
@@ -68,9 +67,8 @@ Blockchain.prototype.onMessage = function(message, flags) {
       debug('Status %s', message);
       break;
     case 'block':
-      var block = data.x;
-      debug('New block #%d, time %d.', block.height, block.time);
-      this.emit('block', block);
+      debug('New block #%d, time %d.', data.x.height, data.x.time);
+      this.emit('block', data.x);
       break;
     }
   } catch (e) {
@@ -121,3 +119,5 @@ Blockchain.prototype.onPong = function() {
   debug('Pong received.');
   this.resetPingTimer();
 };
+
+module.exports = Blockchain;

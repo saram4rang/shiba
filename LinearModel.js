@@ -1,5 +1,4 @@
-
-module.exports = LinearModel;
+'use strict';
 
 function LinearModel() {
   this.n     = 0;
@@ -23,8 +22,10 @@ LinearModel.prototype.add = function(x,y) {
     (this.sx2 - this.sx * this.sx / this.n);
   this.alpha =
     (this.sy - this.beta * this.sx) / this.n;
-}
+};
 
 LinearModel.prototype.evaluate = function(x) {
   return this.alpha + x * this.beta;
-}
+};
+
+module.exports = LinearModel;

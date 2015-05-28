@@ -1,22 +1,25 @@
-var _           =  require('lodash');
-var Events      =  require('events');
-var util        =  require('util');
-var microtime   =  require('microtime');
-var request     =  require('request');
-var SocketIO    =  require('socket.io-client');
-var debug       =  require('debug')('shiba:client');
-var debuggame   =  require('debug')('shiba:game');
-var debuguser   =  require('debug')('shiba:user');
-var debugchat   =  require('debug')('shiba:chat');
-var debugtick   =  require('debug')('shiba:tick');
+'use strict';
 
-var Lib         =  require('./Lib');
-var LinearModel =  require('./LinearModel');
+const _            =  require('lodash');
+const EventEmitter =  require('events').EventEmitter;
+const inherits     =  require('util').inherits;
+const microtime    =  require('microtime');
+const co           =  require('co');
+const request      =  require('co-request');
+const SocketIO     =  require('socket.io-client');
+const debug        =  require('debug')('shiba:client');
+const debuggame    =  require('debug')('shiba:game');
+const debuguser    =  require('debug')('shiba:user');
+const debugchat    =  require('debug')('shiba:chat');
+const debugtick    =  require('debug')('verbose:tick');
+
+const Lib          =  require('./Lib');
+const LinearModel  =  require('./LinearModel');
 
 module.exports = Client;
 
 function Client(config) {
-  _.extend(this, Events);
+  EventEmitter.call(this);
 
   /* User state. Possible values are
    *
@@ -85,7 +88,7 @@ function Client(config) {
   this.socket.on('msg', this.onMsg.bind(this));
 }
 
-util.inherits(Client, Events.EventEmitter);
+inherits(Client, EventEmitter);
 
 Client.prototype.onError = function(err) {
   console.error('onError: ', err);
@@ -94,18 +97,22 @@ Client.prototype.onError = function(err) {
 Client.prototype.onConnect = function(data) {
   debug("Connected.");
 
-  var self = this;
+  let self = this;
   self.emit('connect');
-  getOtt(this.config, function(err, ott) {
+
+  co(function*() {
+    let ott = yield* getOtt(self.config);
     debug("Received one time token: " + ott);
     debug("Joining the game");
 
-    var info = ott ? { ott: "" + ott } : {};
+    let info = ott ? { ott: "" + ott } : {};
     self.socket.emit('join', info, function(err, data) {
-      if (err) return console.error('Error when joining the game...', err);
-      self.onJoin(data);
+      if (err)
+        console.error('[ERROR] onConnect:', err);
+      else
+        self.onJoin(data);
     });
-  });
+  }).catch(err => console.error('[ERROR] onConnect', err));
 };
 
 Client.prototype.onDisconnect = function(data) {
@@ -172,7 +179,7 @@ Client.prototype.onJoin = function(data) {
        }
   */
 
-  var copy =
+  let copy =
     { state:        data.state,
       game_id:      data.game_id,
       last_hash:    data.last_hash,
@@ -199,13 +206,13 @@ Client.prototype.onJoin = function(data) {
       forced:          null
     };
 
-  for (var i = 0; i < data.joined.length; ++i) {
+  for (let i = 0; i < data.joined.length; ++i) {
     this.game.players[data.joined[i]] = {};
   }
 
   if (data.state === 'IN_PROGRESS') {
     this.game.microStartTime = this.game.startTime * 1000;
-    var tickInfo =
+    let tickInfo =
       { elapsed: data.elapsed,
         growth:  Lib.growthFunc(data.elapsed),
         micro:   microtime.now() - this.game.microStartTime
@@ -216,7 +223,7 @@ Client.prototype.onJoin = function(data) {
     this.tickModel.add(tickInfo.elapsed, tickInfo.micro);
   }
 
-  var players = data.player_info;
+  let players = data.player_info;
 
   this.balance  = data.balance_satoshis;
   this.username = data.username;
@@ -226,7 +233,7 @@ Client.prototype.onJoin = function(data) {
     this.userState = 'WATCHING';
   else if (players[this.username].stopped_at)
     this.userState = 'CASHEDOUT';
-  else if(data.state == 'ENDED')
+  else if(data.state === 'ENDED')
     this.userState = 'CRASHED';
   else
     this.userState = 'PLAYING';
@@ -271,7 +278,7 @@ Client.prototype.onGameStarted = function(bets) {
   this.game.startTime      = new Date();
   this.game.microStartTime = microtime.now();
 
-  for (var username in bets) {
+  for (let username in bets) {
     if (this.username === username)
       this.balance -= bets[username];
 
@@ -280,9 +287,9 @@ Client.prototype.onGameStarted = function(bets) {
       this.game.players[username].bet = bets[username];
     else
       this.game.players[username] = { bet: bets[username] };
-  };
+  }
 
-  var tickInfo =
+  let tickInfo =
     { elapsed: 0,
       growth: 100,
       micro: 0
@@ -291,10 +298,10 @@ Client.prototype.onGameStarted = function(bets) {
   this.tickModel = new LinearModel();
   this.tickModel.add(0, 0);
 
-  if (this.userState == 'PLACED') {
+  if (this.userState === 'PLACED') {
     debuguser('User state: PLACED -> PLAYING');
     this.userState = 'PLAYING';
-  } else if (this.userState == 'PLACING') {
+  } else if (this.userState === 'PLACING') {
     debuguser('Bet failed.');
     debuguser('User state: PLACING -> WATCHING');
     this.userState = 'WATCHING';
@@ -305,21 +312,21 @@ Client.prototype.onGameStarted = function(bets) {
 
 Client.prototype.onGameTick = function(data) {
   // TODO: Simplify after server upgrade
-  var elapsed      = typeof data == 'object' ? data.elapsed : data;
-  var at           = Lib.growthFunc(elapsed);
-  var previousTick = this.getLastTick();
-  var micro        = microtime.now();
-  var tickInfo     = { elapsed: elapsed,
+  let elapsed      = typeof data === 'object' ? data.elapsed : data;
+  let at           = Lib.growthFunc(elapsed);
+  let previousTick = this.getLastTick();
+  let micro        = microtime.now();
+  let tickInfo     = { elapsed: elapsed,
                        growth: at,
                        micro: micro - this.game.microStartTime
                      };
   this.game.ticks.push(tickInfo);
   this.tickModel.add(elapsed, tickInfo.micro);
 
-  var diffElapsed = tickInfo.elapsed - previousTick.elapsed;
-  var diffMicro   = tickInfo.micro - previousTick.micro;
-  var next        = this.estimateNextTick();
-  var line        = Lib.formatFactor(at);
+  let diffElapsed = tickInfo.elapsed - previousTick.elapsed;
+  let diffMicro   = tickInfo.micro - previousTick.micro;
+  let next        = this.estimateNextTick();
+  let line        = Lib.formatFactor(at);
   line = line + " elapsed " + elapsed;
   line = line + " 'ΔElapsed " + diffElapsed + "'";
   line = line + " 'ΔMicro " + diffMicro + "'";
@@ -343,7 +350,7 @@ Client.prototype.onGameCrash = function(data) {
        }
   */
 
-  var crash = Lib.formatFactor(data.game_crash);
+  let crash = Lib.formatFactor(data.game_crash);
   debuggame('Game #%d crashed @%sx', this.game.id, crash);
   this.lastServerSeed  = data.hash;
   this.game.serverSeed = data.hash;
@@ -352,20 +359,20 @@ Client.prototype.onGameCrash = function(data) {
   this.game.state      = 'ENDED';
 
   // Add the bonus to each user that wins it
-  for (var playerName in data.bonuses) {
+  for (let playerName in data.bonuses) {
     console.assert(this.game.players[playerName]);
     this.game.players[playerName].bonus = data.bonuses[playerName];
   }
 
-  var gameInfo = this.getGameInfo();
+  let gameInfo = this.getGameInfo();
   // Add the current game info to the game history and if the
   // game history is larger than 40 remove one element
   if (this.gameHistory.length >= 40)
     this.gameHistory.pop();
   this.gameHistory.unshift(gameInfo);
 
-  if (this.userState == 'PLAYING' ||
-      this.state == 'CASHINGOUT') {
+  if (this.userState === 'PLAYING' ||
+      this.state === 'CASHINGOUT') {
     debuguser('User state: %s -> CRASHED', this.userState);
     this.userState = 'CRASHED';
     this.emit('user_loss', data);
@@ -399,7 +406,7 @@ Client.prototype.onCashedOut = function(data) {
   */
 
   console.assert(this.game.players[data.username]);
-  var player = this.game.players[data.username];
+  let player = this.game.players[data.username];
   player.stopped_at = data.stopped_at;
 
   if (this.username === data.username) {
@@ -426,7 +433,7 @@ Client.prototype.onMsg = function(msg) {
 Client.prototype.doBet = function(amount, autoCashout) {
   debuguser('Bet: %d @%d', amount, autoCashout);
 
-  if (this.userState != 'WATCHING')
+  if (this.userState !== 'WATCHING')
     return console.error('Cannot place bet in state: ' + this.userState);
 
   this.userState = 'PLACING';
@@ -437,9 +444,9 @@ Client.prototype.doBet = function(amount, autoCashout) {
 
 Client.prototype.doCashout = function() {
   debuguser('Cashing out');
-  if (this.userState != 'PLAYING' &&
-      this.userState != 'PLACING' &&
-      this.userState != 'PLACED')
+  if (this.userState !== 'PLAYING' &&
+      this.userState !== 'PLACING' &&
+      this.userState !== 'PLACED')
     return console.error('Cannot cashout in state: ' + this.userState);
 
   this.userState = 'CASHINGOUT';
@@ -450,9 +457,9 @@ Client.prototype.doCashout = function() {
 
 Client.prototype.doSetAutoCashout = function(at) {
   debuguser('Setting auto cashout: %d', at);
-  if (this.userState != 'PLAYING' &&
-      this.userState != 'PLACING' &&
-      this.userState != 'PLACED')
+  if (this.userState !== 'PLAYING' &&
+      this.userState !== 'PLACING' &&
+      this.userState !== 'PLACED')
     return console.error('Cannot set auto cashout in state: ' + this.userState);
 
   this.socket.emit('set_auto_cash_out', at);
@@ -465,7 +472,7 @@ Client.prototype.doSay = function(line) {
 
 Client.prototype.doMute = function(user, timespec) {
   debugchat('Muting user: %s time: %s', user, timespec);
-  var line = '/mute ' + user;
+  let line = '/mute ' + user;
   if (timespec) line = line + ' ' + timespec;
   this.socket.emit('say', line);
 };
@@ -485,25 +492,25 @@ Client.prototype.elapsedToMicro = function(elapsed) {
 };
 
 Client.prototype.estimateTickTimeDiff = function() {
-  var diffs = [];
-  var ticks = this.game.ticks;
+  let diffs = [];
+  let ticks = this.game.ticks;
 
   if (ticks.length < 2)
     return { lower: 0, upper: 0 };
   if (ticks.length < 3) {
-    var t = ticks[1].elapsed - ticks[0].elapsed;
+    let t = ticks[1].elapsed - ticks[0].elapsed;
     return { lower: t, upper: t };
   }
   if (ticks.length < 4) {
-    var t1 = ticks[1].elapsed - ticks[0].elapsed;
-    var t2 = ticks[2].elapsed - ticks[1].elapsed;
+    let t1 = ticks[1].elapsed - ticks[0].elapsed;
+    let t2 = ticks[2].elapsed - ticks[1].elapsed;
 
     return { lower: Math.min(t1,t2),
              upper: Math.max(t1,t2)
            };
   }
 
-  for (var i = 1; i < ticks.length; ++i)
+  for (let i = 1; i < ticks.length; ++i)
     diffs.push(ticks[i].elapsed - ticks[i-1].elapsed);
 
   diffs.sort(function(a,b) { return a - b; });
@@ -513,20 +520,20 @@ Client.prototype.estimateTickTimeDiff = function() {
 };
 
 Client.prototype.estimateNextTick = function() {
-  var last = this.getLastTick();
-  var tickdiff = this.estimateTickTimeDiff();
+  let last = this.getLastTick();
+  let tickdiff = this.estimateTickTimeDiff();
 
   // Lower estimate
-  var lower_elapsed  = Math.floor(last.elapsed + tickdiff.lower);
-  var lower_tickInfo =
+  let lower_elapsed  = Math.floor(last.elapsed + tickdiff.lower);
+  let lower_tickInfo =
     { elapsed: lower_elapsed,
       growth:  Lib.growthFunc(lower_elapsed),
       micro:   this.elapsedToMicro(lower_elapsed)
     };
 
   // Upper estimate
-  var upper_elapsed  = Math.floor(last.elapsed + tickdiff.upper);
-  var upper_tickInfo =
+  let upper_elapsed  = Math.floor(last.elapsed + tickdiff.upper);
+  let upper_tickInfo =
     { elapsed:    upper_elapsed,
       growth:     Lib.growthFunc(upper_elapsed),
       micro:      this.elapsedToMicro(upper_elapsed)
@@ -537,14 +544,14 @@ Client.prototype.estimateNextTick = function() {
 
 Client.prototype.timeTillStart = function() {
   return this.startTime - Date.now();
-}
+};
 
 Client.prototype.getPlayers = function() {
   return this.game.players;
 };
 
 Client.prototype.getGameInfo = function() {
-  var gameInfo =
+  let gameInfo =
     { elapsed:          Date.now() - this.game.startTime,
       game_id:          this.game.id,
       server_seed_hash: this.game.serverSeedHash,
@@ -555,8 +562,8 @@ Client.prototype.getGameInfo = function() {
     };
 
   if (this.game.state === 'ENDED') {
-    var cp   = Lib.crashPoint(this.game.serverSeed);
-    var diff = Math.abs(cp - this.game.crashPoint);
+    let cp   = Lib.crashPoint(this.game.serverSeed);
+    let diff = Math.abs(cp - this.game.crashPoint);
 
     gameInfo.game_crash  = this.game.crashPoint;
     gameInfo.server_seed = this.game.serverSeed;
@@ -572,17 +579,16 @@ Client.prototype.getGameInfo = function() {
 };
 
 // Get a one time token from the server to join the game.
-function getOtt(config, cb) {
-  if (!config.SESSION) return cb(null, null);
+function* getOtt(config) {
+  if (!config.SESSION) return null;
 
   debug("Requesting one time token");
 
-  var cookie = request.cookie('id=' + config.SESSION);
-  var url    = config.WEBSERVER + '/ott';
-  var jar    = request.jar();
+  let cookie = request.cookie('id=' + config.SESSION);
+  let url    = config.WEBSERVER + '/ott';
+  let jar    = request.jar();
   jar.setCookie(cookie, url);
 
-  var req = request.post({url:url, jar:jar}, function(err, res, body) {
-    return cb(err,body);
-  });
+  let res = yield request.post({url:url, jar:jar});
+  return res.body;
 }

@@ -60,23 +60,25 @@ function* withClient(runner) {
         };
 
   try {
-    let result = yield runner(query);
+    let result = yield* runner(query);
     done();
     return result;
   } catch (ex) {
-    console.log(ex);
-    console.log(ex.stack);
-    if (ex.removeFromPool) {
-      console.error('[INTERNAL_ERROR] removing connection from pool after getting ', ex);
-      done(new Error('Removing connection from pool'));
-      throw ex;
-    } else if (ex.code === '40P01') { // Deadlock
+    if (ex.code === '40P01') { // Deadlock
       done();
-      return yield withClient(runner);
+      return yield* withClient(runner);
+    }
+
+    console.error(ex);
+    console.error(ex.stack);
+
+    if (ex.removeFromPool) {
+      console.error('[ERROR] withClient: removing connection from pool');
+      done(new Error('Removing connection from pool'));
     } else {
       done();
-      throw ex;
     }
+    throw ex;
   }
 }
 
@@ -93,19 +95,19 @@ let txSeq = 0;
  */
 function* withTransaction(runner) {
 
-  return yield withClient(function*(query) {
+  return yield* withClient(function*(query) {
     let txid = txSeq++;
     try {
       debug('[%d] Starting transaction', txid);
-      yield query('BEGIN');
-      let result = yield runner(query);
+      yield* query('BEGIN');
+      let result = yield* runner(query);
       debug('[%d] Committing transaction', txid);
-      yield query('COMMIT');
+      yield* query('COMMIT');
       debug('[%d] Finished transaction', txid);
       return result;
     } catch (ex) {
       try {
-        yield query('ROLLBACK');
+        yield* query('ROLLBACK');
       } catch(ex) {
         ex.removeFromPool = true;
         throw ex;
@@ -118,11 +120,11 @@ function* withTransaction(runner) {
 function* getOrCreateUser(username) {
   debug('GetOrCreateUser user: ' + username);
 
-  return yield withTransaction(function*(query) {
+  return yield* withTransaction(function*(query) {
     let sql = 'SELECT * FROM users WHERE lower(username) = lower($1)';
     let par = [username];
 
-    let result = yield query(sql, par);
+    let result = yield* query(sql, par);
 
     if (result.rows.length > 0) {
       // User exists. Return the first (and only) row.
@@ -134,7 +136,7 @@ function* getOrCreateUser(username) {
     sql = 'INSERT INTO users(username) VALUES($1) RETURNING username, id';
     par = [username];
 
-    result = yield query(sql, par);
+    result = yield* query(sql, par);
     assert(result.rows.length === 1);
     return result.rows[0];
   });
@@ -149,7 +151,7 @@ function* getExistingUser(username) {
   let sql = 'SELECT * FROM users WHERE lower(username) = lower($1)';
   let par = [username];
 
-  let data = yield query(sql, par);
+  let data = yield* query(sql, par);
 
   if (data.rows.length > 0) {
     // User exists. Return the first (and only) row.
@@ -170,7 +172,7 @@ function* getUser(username) {
     throw 'USERNAME_INVALID';
 
   try {
-    return yield userCache.get(username);
+    return yield* userCache.get(username);
   } catch(err) {
     console.error('[Pg.getUser] ERROR:', err);
     throw err;
@@ -187,11 +189,11 @@ CREATE TABLE chats (
 */
 exports.putChat = function*(username, message, timestamp) {
   debug('Recording chat message. User: ' + username);
-  let user = yield getUser(username);
+  let user = yield* getUser(username);
 
   let sql = 'INSERT INTO chats(user_id, message, created) VALUES ($1, $2, $3)';
   let par = [user.id, message, timestamp];
-  yield query(sql, par);
+  yield* query(sql, par);
 };
 
 /*
@@ -209,7 +211,7 @@ exports.putMute = function*(username, moderatorname, timespec, shadow, timestamp
         ' User: ' + username + '.' +
         ' Moderator: ' + moderatorname);
 
-  let vals = yield parallel([getUser(username), getUser(moderatorname)]),
+  let vals = yield* parallel([username,moderatorname].map(getUser)),
       usr  = vals[0],
       mod  = vals[1],
       sql  =
@@ -217,7 +219,7 @@ exports.putMute = function*(username, moderatorname, timespec, shadow, timestamp
         'mutes(user_id, moderator_id, timespec, shadow, created) ' +
         'VALUES ($1, $2, $3, $4, $5)',
       par  = [usr.id, mod.id, timespec, shadow, timestamp];
-  yield query(sql, par);
+  yield* query(sql, par);
 };
 
 exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
@@ -225,7 +227,7 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
         ' User: ' + username + '.' +
         ' Moderator: ' + moderatorname);
 
-  let vals = yield parallel([getUser(username), getUser(moderatorname)]);
+  let vals = yield* parallel([getUser(username), getUser(moderatorname)]);
   let usr  = vals[0];
   let mod  = vals[1];
 
@@ -234,21 +236,21 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
     'unmutes(user_id, moderator_id, shadow, created) ' +
     'VALUES ($1, $2, $3, $4)';
   let par = [usr.id, mod.id, shadow, timestamp];
-  yield query(sql, par);
+  yield* query(sql, par);
 };
 
 exports.putMsg = function*(msg) {
   switch(msg.type) {
   case 'say':
-    yield this.putChat(msg.username, msg.message, new Date(msg.time));
+    yield* this.putChat(msg.username, msg.message, new Date(msg.time));
     break;
   case 'mute':
-    yield this.putMute(
+    yield* this.putMute(
       msg.username, msg.moderator, msg.timespec,
       msg.shadow, new Date(msg.time));
     break;
   case 'unmute':
-    yield this.putUnmute(
+    yield* this.putUnmute(
       msg.username, msg.moderator, msg.shadow,
       new Date(msg.time));
     break;
@@ -264,14 +266,14 @@ exports.putGame = function*(info) {
   let players = Object.keys(info.player_info);
 
   // Step1: Resolve all player names.
-  let users   = yield parallel(players.map(getUser));
+  let users   = yield* parallel(players.map(getUser));
   let userIds = {};
   for (let i in users)
     userIds[users[i].username] = users[i].id;
 
   // Insert into the games and plays table in a common transaction.
   debug('Recording info for game #' + info.game_id);
-  yield withTransaction(function*(query) {
+  yield* withTransaction(function*(query) {
     debugpg('Inserting game data for game #' + info.game_id);
 
     let sql =
@@ -283,9 +285,9 @@ exports.putGame = function*(info) {
         info.game_crash,
         info.server_seed
       ];
-    yield query(sql, par);
+    yield* query(sql, par);
 
-    yield parallel(players.map(function*(player){
+    yield* parallel(players.map(function*(player){
       debugpg('Inserting play for ' + player);
 
       let play = info.player_info[player];
@@ -302,7 +304,7 @@ exports.putGame = function*(info) {
         ];
 
       try {
-        yield query(sql, par);
+        yield* query(sql, par);
       } catch(err) {
         console.error('Insert play failed. Values:', play);
         throw err;
@@ -323,7 +325,7 @@ CREATE TABLE licks (
 exports.putLick = function*(username, message, creatorname) {
   debug('Recording custom lick message for user: ' + username);
 
-  let vals    = yield parallel([getUser(username), getUser(creatorname)]);
+  let vals    = yield* parallel([getUser(username), getUser(creatorname)]);
   let user    = vals[0];
   let creator = vals[1];
 
@@ -332,16 +334,16 @@ exports.putLick = function*(username, message, creatorname) {
     'licks(user_id, message, creator_id) ' +
     'VALUES ($1, $2, $3)';
   let par = [user.id, message, creator.id];
-  yield query(sql, par);
+  yield* query(sql, par);
 };
 
 exports.getLick = function*(username) {
   debug('Getting custom lick messages for user: ' + username);
-  let user = getExistingUser(username);
+  let user = yield* getExistingUser(username);
 
   let sql   = 'SELECT message FROM licks WHERE user_id = $1';
   let par   = [user.id];
-  let data  = yield query(sql, par);
+  let data  = yield* query(sql, par);
   let licks = data.rows.map(row => row.message);
 
   return {username: user.username, licks: licks};
@@ -367,7 +369,7 @@ exports.getCrash = function*(qry) {
   }
 
   try {
-    let data = yield query(sql, par);
+    let data = yield* query(sql, par);
     return data.rows;
   } catch(err) {
     console.error(err);
@@ -379,12 +381,12 @@ exports.addAutomute = function*(creator, regex) {
   regex = regex.toString();
   debug('Adding automute ' + regex);
 
-  let user = yield getUser(creator);
+  let user = yield* getUser(creator);
   let sql  = 'INSERT INTO automutes(creator_id, regexp) VALUES($1, $2)';
   let par  = [user.id, regex];
 
   try {
-    yield query(sql, par);
+    yield* query(sql, par);
   } catch(err) {
     console.error(err);
     throw err;
@@ -396,7 +398,7 @@ exports.getAutomutes = function*() {
   let sql = 'SELECT regexp FROM automutes WHERE enabled';
   let par = [];
 
-  let data = yield query(sql, par);
+  let data = yield* query(sql, par);
 
   let reg = /^\/(.*)\/([gi]*)$/;
   let res = data.rows.map(row => {
@@ -410,13 +412,13 @@ exports.getAutomutes = function*() {
 exports.getLastSeen = function*(username) {
   debug('Getting last chat message of user ' + username);
 
-  let user = getExistingUser(username);
+  let user = yield* getExistingUser(username);
 
   let sql =
     'SELECT created FROM chats WHERE user_id = $1 ' +
     'ORDER BY created DESC LIMIT 1';
   let par  = [user.id];
-  let data = yield query(sql, par);
+  let data = yield* query(sql, par);
 
   if (data.rows.length > 0) {
     // Return the first (and only) row.
@@ -436,7 +438,7 @@ exports.getLatestBlock = function*() {
   let sql = 'SELECT * FROM blocks ORDER BY height DESC LIMIT 1';
   let par = [];
 
-  let data = yield query(sql, par);
+  let data = yield* query(sql, par);
   return data.rows[0];
 };
 
@@ -445,10 +447,13 @@ exports.putBlock = function*(block) {
   let par = [block.height, block.hash];
 
   try {
-    yield query(sql, par);
+    yield* query(sql, par);
   } catch(err) {
     // Ignore unique_violation code 23505.
-    if (err.code !== 23505 && err.code !== '23505') throw err;
+    if (err.code === 23505 || err.code === '23505')
+      debugpg('Block database entry already exists');
+    else
+      throw err;
   }
 };
 
@@ -456,7 +461,7 @@ exports.getBlockNotifications = function*() {
   debug('Getting block notification list');
   let sql  = 'SELECT * FROM blocknotifications';
   let par  = [];
-  let data = yield query(sql, par);
+  let data = yield* query(sql, par);
 
   return data.rows.map(row => row.username);
 };
@@ -467,7 +472,7 @@ exports.putBlockNotification = function*(username) {
   let par = [username];
 
   try {
-    yield query(sql, par);
+    yield* query(sql, par);
   } catch(err) {
     // Ignore unique_violation code 23505.
     if (err.code !== 23505 && err.code !== '23505') throw err;
@@ -478,5 +483,5 @@ exports.clearBlockNotifications = function*() {
   debug('Clearing block notification list');
   let sql = 'DELETE FROM blocknotifications';
   let par = [];
-  yield query(sql, par);
+  yield* query(sql, par);
 };
