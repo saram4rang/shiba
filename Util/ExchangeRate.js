@@ -1,6 +1,5 @@
 'use strict';
 
-const parallel   = require('co-parallel');
 const fx         = require('money');
 const oxr        = require('open-exchange-rates');
 const debug      = require('debug')('shiba:exchangerate');

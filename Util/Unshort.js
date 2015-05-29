@@ -1,6 +1,5 @@
 'use strict';
 
-const parallel = require('co-parallel');
 const request  = require('co-request');
 const debug    = require('debug')('shiba:unshort');
 const Cache    = require('./Cache');
@@ -42,7 +41,7 @@ function* unshort(url) {
 }
 
 function* unshorts(urls) {
-  return yield* parallel(urls.map(unshort));
+  return yield urls.map(unshort);
 }
 
 module.exports.unshort  = unshort;

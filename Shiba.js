@@ -343,7 +343,6 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
   try {
     // Get licks stored in the DB.
     let data     = yield* Pg.getLick(user);
-    console.log(data);
     let username = data.username;
     let customs  = data.licks;
 
@@ -415,7 +414,6 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     return;
   }
 
-  console.log(message);
   if (!message.time) {
     // User exists but hasn't said a word.
     this.client.doSay('very silent. never spoken');

@@ -1,7 +1,6 @@
 'use strict';
 
 const assert   = require('assert');
-const parallel = require('co-parallel');
 const pg       = require('co-pg')(require('pg'));
 const debug    = require('debug')('shiba:db');
 const debugpg  = require('debug')('shiba:db:pg');
@@ -211,7 +210,7 @@ exports.putMute = function*(username, moderatorname, timespec, shadow, timestamp
         ' User: ' + username + '.' +
         ' Moderator: ' + moderatorname);
 
-  let vals = yield* parallel([username,moderatorname].map(getUser)),
+  let vals = yield [username,moderatorname].map(getUser),
       usr  = vals[0],
       mod  = vals[1],
       sql  =
@@ -227,7 +226,7 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
         ' User: ' + username + '.' +
         ' Moderator: ' + moderatorname);
 
-  let vals = yield* parallel([getUser(username), getUser(moderatorname)]);
+  let vals = yield [username,moderatorname].map(getUser);
   let usr  = vals[0];
   let mod  = vals[1];
 
@@ -266,7 +265,7 @@ exports.putGame = function*(info) {
   let players = Object.keys(info.player_info);
 
   // Step1: Resolve all player names.
-  let users   = yield* parallel(players.map(getUser));
+  let users   = yield players.map(getUser);
   let userIds = {};
   for (let i in users)
     userIds[users[i].username] = users[i].id;
@@ -287,7 +286,7 @@ exports.putGame = function*(info) {
       ];
     yield* query(sql, par);
 
-    yield* parallel(players.map(function*(player){
+    for (let player of players) {
       debugpg('Inserting play for ' + player);
 
       let play = info.player_info[player];
@@ -309,7 +308,7 @@ exports.putGame = function*(info) {
         console.error('Insert play failed. Values:', play);
         throw err;
       }
-    }));
+    }
   });
 };
 
@@ -325,7 +324,7 @@ CREATE TABLE licks (
 exports.putLick = function*(username, message, creatorname) {
   debug('Recording custom lick message for user: ' + username);
 
-  let vals    = yield* parallel([getUser(username), getUser(creatorname)]);
+  let vals    = yield [username,creatorname].map(getUser);
   let user    = vals[0];
   let creator = vals[1];
 
