@@ -6,7 +6,7 @@ const debugblock   =  require('debug')('shiba:blocknotify');
 const debugautomute = require('debug')('shiba:automute');
 
 const profanity    =  require('./profanity');
-const Blockchain   =  require('./Blockchain');
+const Blockchain   =  require('./Util/Blockchain');
 const Unshort      =  require('./Util/Unshort');
 
 const Client       =  require('./Client');
