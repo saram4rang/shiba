@@ -22,7 +22,7 @@ const unshortCache = new Cache({
     function*(url) {
       debug("Loading '%s'", url);
       let opt = {url:url, headers:headers};
-      let res = yield* request(opt);
+      let res = yield request(opt);
 
       // Return the URL after following all redirects.
       return res.request.href;
@@ -35,7 +35,7 @@ function* unshort(url) {
     debug('Unshortened "%s" -> "%s"', url, res);
     return res;
   } catch(err) {
-    console.error("Got error while unshortening: '" + err + "'");
+    console.error("[ERROR] Unshort: " + err);
     console.error("Url was:", JSON.stringify(url));
     throw err;
   }
