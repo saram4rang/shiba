@@ -25,13 +25,15 @@ function *query(sql, params) {
   let vals   = yield pg.connectPromise(Config.DATABASE);
   let client = vals[0];
   let done   = vals[1];
-  let result = yield client.queryPromise(sql, params);
 
-  // Release client back to pool
-  done();
-  debugpg("[%d] Finished query", qid);
-
-  return result;
+  try {
+    let result = yield client.queryPromise(sql, params);
+    debugpg("[%d] Finished query", qid);
+    return result;
+  } finally {
+    // Release client back to pool
+    done();
+  }
 }
 
 /**
