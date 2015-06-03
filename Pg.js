@@ -486,3 +486,17 @@ exports.clearBlockNotifications = function*() {
   let par = [];
   yield* query(sql, par);
 };
+
+exports.getGameCrashMedian = function*(numGames) {
+  debug('Retrieving game crash median');
+
+  let sql =
+    'WITH t AS (SELECT game_crash FROM games ORDER BY id DESC LIMIT $1)\
+       SELECT percentile_cont(0.5)\
+       WITHIN GROUP (ORDER BY game_crash) AS median, COUNT(*)\
+       FROM t';
+  let par = [numGames];
+  let data = yield* query(sql, par);
+
+  return data.rows[0];
+};

@@ -16,6 +16,7 @@ const Config       =  require('./Config');
 const Pg           =  require('./Pg');
 
 const CmdConvert   =  require('./Cmd/Convert');
+const CmdMedian    =  require('./Cmd/Median');
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -24,6 +25,7 @@ function Shiba() {
 
   let self = this;
   self.cmdConvert = new CmdConvert();
+  self.cmdMedian = new CmdMedian();
 
   co(function*(){
     // Last received block information.
@@ -292,6 +294,10 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     break;
   case 'automute':
     yield* this.onCmdAutomute(msg, rest);
+    break;
+  case 'median':
+  case 'med':
+    yield* this.cmdMedian.handle(this.client, msg, rest);
     break;
   }
 };
