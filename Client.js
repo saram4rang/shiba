@@ -77,6 +77,7 @@ function Client(config) {
   debug("Setting up connection to %s", config.GAMESERVER);
   this.socket = SocketIO(config.GAMESERVER);
   this.socket.on('error', this.onError.bind(this));
+  this.socket.on('err', this.onErr.bind(this));
   this.socket.on('connect', this.onConnect.bind(this));
   this.socket.on('disconnect', this.onDisconnect.bind(this));
   this.socket.on('game_starting', this.onGameStarting.bind(this));
@@ -92,6 +93,10 @@ inherits(Client, EventEmitter);
 
 Client.prototype.onError = function(err) {
   console.error('onError: ', err);
+};
+
+Client.prototype.onErr = function(err) {
+  console.error('onErr: ', err);
 };
 
 Client.prototype.onConnect = function(data) {
