@@ -5,6 +5,8 @@ const StreakParser = require('./StreakParser').parser;
 const Lib          =  require('../Lib');
 const Pg           =  require('../Pg');
 
+const MAX_NUM_GAMES = 8;
+
 module.exports = exports = Streak;
 
 function Streak() {
@@ -43,10 +45,16 @@ Streak.prototype.handle = function*(client, msg, input) {
   let numGames = result.length;
   let begin = result[0].game_id;
   let end = result[numGames-1].game_id;
-  let crashes = result.map(x => Lib.formatFactor(x.game_crash) + 'x').join(', ');
+  let crashes = result
+                  .slice(0,MAX_NUM_GAMES)
+                  .map(game => Lib.formatFactor(game.game_crash) + 'x')
+                  .join(', ');
   let response =
     'Seen ' + numGames + ' streak in games #' +
     begin + '-#' + end + ': ' + crashes;
+
+  if (numGames > MAX_NUM_GAMES)
+    response += ', ...';
 
   client.doSay(response);
 };
