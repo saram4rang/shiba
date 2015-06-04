@@ -29,9 +29,9 @@ Streak.prototype.handle = function*(client, msg, input) {
 
   let result;
   try {
-    result = streak.count
-      ? yield* Pg.getLastStreak(streak.count, streak.op, streak.bound)
-      : yield* Pg.getMaxStreak(streak.op, streak.bound);
+    result = streak.count ?
+      yield* Pg.getLastStreak(streak.count, streak.op, streak.bound) :
+      yield* Pg.getMaxStreak(streak.op, streak.bound);
   } catch(err) {
     client.doSay('wow. such database fail');
     throw err;

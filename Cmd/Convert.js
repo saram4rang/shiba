@@ -48,7 +48,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
         0.000243456487    ->  0.00024346
    */
 
-  if (result != 0) {
+  if (result !== 0) {
     /* Scale using the exponent, but not more than 5 integral places. */
     let e  = Math.min(Math.floor(Math.log(Math.abs(result)) / Math.log(10)),5);
     result = Math.round(result / Math.pow(10, e-5));
@@ -81,44 +81,25 @@ function pretty(iso, num, mod) {
   /* In case somebody specifically asked for milli we
      only print the ISO code variant.
   */
-  if (mod == 'm')
+  if (mod === 'm')
     return num + " m" + iso;
 
+  let mod1 = modFactor(mod) === 1;
   switch (iso) {
   case 'EUR': return "€"   + num + mod;
   case 'GBP': return "£"   + num + mod;
   case 'IDR': return "Rp " + num + mod;
   case 'INR': return "₹"   + num + mod;
   case 'USD': return "$"   + num + mod;
-  case 'BIT': return num == 1 && mod == '' ? "1 Bit" : num + mod + " Bits";
+  case 'BIT': return num === 1 && mod1 ? "1 Bit" : num + mod + " Bits";
   case 'SAT': return num + mod + " satoshi";
   case 'KOINU': return num + mod + " 子犬";
   /* Use suffix symbols for these if no modifier is
    * provided. Otherwise use the ISO code. */
-  case 'PLN':
-    if (modFactor(mod) == 1) {
-      return num + 'zł';
-    } else {
-      return num + mod + ' PLN';
-    }
-  case 'VND':
-    if (modFactor(mod) == 1) {
-      return num + '₫';
-    } else {
-      return num + mod + ' VND';
-    }
-  case 'XAG':
-    if (modFactor(mod) == 1) {
-      return num + ' oz. tr. of silver';
-    } else {
-      return num + mod + ' XAG';
-    }
-  case 'XAU':
-    if (modFactor(mod) == 1) {
-      return num + ' oz. tr. of gold';
-    } else {
-      return num + mod + ' XAU';
-    }
+  case 'PLN': return mod1 ? num + 'zł' : num + mod + ' PLN';
+  case 'VND': return mod1 ? num + '₫' : num + mod + ' VND';
+  case 'XAG': return mod1 ? num + ' oz. tr. of silver' : num + mod + ' XAG';
+  case 'XAU': return mod1 ? num + ' oz. tr. of gold' : num + mod + ' XAU';
   default:
     return num + mod + " " + iso;
   }
