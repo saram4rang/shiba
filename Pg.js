@@ -500,3 +500,59 @@ exports.getGameCrashMedian = function*(numGames) {
 
   return data.rows[0];
 };
+
+exports.getLastStreak = function*(count, op, bound) {
+  debug('Retrieving last streak');
+
+  let sql =
+    'WITH\
+       t1 AS\
+         (SELECT id, CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1 THEN id END AS id_start\
+            FROM games\
+            WHERE game_crash ' + op + ' $1),\
+       t2 AS\
+         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group\
+            FROM t1),\
+       best AS\
+         (SELECT id_group, COUNT(*)\
+            FROM t2\
+            GROUP BY id_group\
+            HAVING count(*) >= $2\
+            ORDER BY id_group DESC LIMIT 1)\
+     SELECT id game_id, game_crash game_crash\
+     FROM games, best\
+     WHERE id >= best.id_group AND id < best.id_group + best.count\
+     ORDER BY id';
+
+  let par = [bound, count];
+  let data = yield* query(sql, par);
+
+  return data.rows;
+};
+
+exports.getMaxStreak = function*(op, bound) {
+  debug('Retrieving max streak');
+
+  let sql =
+    'WITH\
+       t1 AS\
+         (SELECT id, CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1 THEN id END AS id_start\
+            FROM games\
+            WHERE game_crash ' + op + ' $1),\
+       t2 AS\
+         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group\
+            FROM t1),\
+       best AS\
+         (SELECT id_group, COUNT(*) AS count\
+            FROM t2\
+            GROUP BY id_group\
+            ORDER BY count DESC LIMIT 1)\
+     SELECT id game_id, game_crash game_crash\
+     FROM games, best\
+     WHERE id >= best.id_group AND id < best.id_group + best.count\
+     ORDER BY id';
+  let par = [bound];
+  let data = yield* query(sql, par);
+
+  return data.rows;
+};
