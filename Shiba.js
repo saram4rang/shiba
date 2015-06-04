@@ -10,12 +10,12 @@ const Blockchain   =  require('./Util/Blockchain');
 const Unshort      =  require('./Util/Unshort');
 
 const Client       =  require('./Client');
-const Crash        =  require('./Crash');
 const Lib          =  require('./Lib');
 const Config       =  require('./Config');
 const Pg           =  require('./Pg');
 
 const CmdConvert   =  require('./Cmd/Convert');
+const CmdCrash     =  require('./Cmd/Crash');
 const CmdMedian    =  require('./Cmd/Median');
 const CmdStreak    =  require('./Cmd/Streak');
 
@@ -26,8 +26,9 @@ function Shiba() {
 
   let self = this;
   self.cmdConvert = new CmdConvert();
-  self.cmdMedian = new CmdMedian();
-  self.cmdStreak = new CmdStreak();
+  self.cmdCrash   = new CmdCrash();
+  self.cmdMedian  = new CmdMedian();
+  self.cmdStreak  = new CmdStreak();
 
   co(function*(){
     // Last received block information.
@@ -292,7 +293,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'crsh':
   case 'cra':
   case 'cr':
-    yield* this.onCmdCrash(msg, rest);
+    yield* this.cmdCrash.handle(this.client, msg, rest);
     break;
   case 'automute':
     yield* this.onCmdAutomute(msg, rest);
@@ -396,7 +397,7 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 
   // Special treatment of rape.
   if (user === 'rape') {
-    yield* this.onCmdCrash(msg, '< 1.05');
+    yield* this.cmdCrash.handle(this.client, msg, '< 1.05');
     return;
   }
 
@@ -440,46 +441,6 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     line += Lib.formatTimeDiff(diff);
     line += ' ago.';
   }
-  this.client.doSay(line);
-};
-
-Shiba.prototype.onCmdCrash = function*(msg, cmd) {
-
-  let qry;
-  try {
-    qry = Crash.parser.parse(cmd);
-  } catch(err) {
-    this.client.doSay('wow. very usage failure. such retry');
-    return;
-  }
-
-  debug('Crash parse result: ' + JSON.stringify(qry));
-
-  let res;
-  try {
-    res = yield* Pg.getCrash(qry);
-  } catch(err) {
-    console.error('[ERROR] onCmdCrash', err.stack);
-    this.client.doSay('wow. such database fail');
-    return;
-  }
-
-  // Assume that we have never seen this crashpoint.
-  if(res.length === 0) {
-    this.client.doSay('wow. such absence. never seen ' + cmd);
-    return;
-  }
-
-  res = res[0];
-  let time = new Date(res.created);
-  let diff = Date.now() - time;
-  let info = this.client.getGameInfo();
-  let line =
-    'Seen ' + Lib.formatFactorShort(res.game_crash) +
-    ' in #' +  res.id +
-    '. ' + (info.game_id - res.id) +
-    ' games ago (' + Lib.formatTimeDiff(diff) +
-    ')';
   this.client.doSay(line);
 };
 
