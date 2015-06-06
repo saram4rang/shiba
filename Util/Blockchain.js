@@ -104,10 +104,16 @@ Blockchain.prototype.resetPingTimer = function() {
 
 Blockchain.prototype.onPingInterval = function() {
   debug('Ping interval. Sending ping. Timeout: %d ms.', this.pingTimeout);
-  this.socket.ping();
-  this.pingTimeoutTimer =
-    setTimeout(this.onPingTimeout.bind(this),
-               this.pingTimeout);
+  try {
+    this.socket.ping();
+    this.pingTimeoutTimer =
+      setTimeout(this.onPingTimeout.bind(this),
+                 this.pingTimeout);
+  } catch(err) {
+    // Usually thrown when socket is closed.
+    console.error('[ERROR] Blockchain::onPingInterval,', err);
+    this.onClose();
+  }
 };
 
 Blockchain.prototype.onPingTimeout = function() {
