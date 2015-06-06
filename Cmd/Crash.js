@@ -51,18 +51,4 @@ Crash.prototype.handle = function*(client, msg, input) {
     ' games ago (' + Lib.formatTimeDiff(diff) +
     ')';
   client.doSay(line);
-
-  debug('Handling crash for "%s" games', input);
-
-  if (!/[0-9]+/.test(input)) {
-    client.doSay('wow. very usage failure. such retry');
-    return;
-  }
-
-  let numGames = parseInt(input);
-  let result   = yield* Pg.getGameCrashCrash(numGames);
-  let response = 'Crash over last ' +
-        result.count + ' games: ' + result.crash/100 + 'x';
-
-  client.doSay(response);
 };
