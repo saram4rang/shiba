@@ -14,10 +14,13 @@ const Lib          =  require('./Lib');
 const Config       =  require('./Config');
 const Pg           =  require('./Pg');
 
+const CmdAutomute  =  require('./Cmd/Automute');
 const CmdConvert   =  require('./Cmd/Convert');
 const CmdCrash     =  require('./Cmd/Crash');
 const CmdMedian    =  require('./Cmd/Median');
 const CmdStreak    =  require('./Cmd/Streak');
+
+const mkAutomuteStore = require('./Store/Automute');
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -25,10 +28,6 @@ const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
 function Shiba() {
 
   let self = this;
-  self.cmdConvert = new CmdConvert();
-  self.cmdCrash   = new CmdCrash();
-  self.cmdMedian  = new CmdMedian();
-  self.cmdStreak  = new CmdStreak();
 
   co(function*(){
     // Last received block information.
@@ -38,7 +37,13 @@ function Shiba() {
     self.blockNotifyUsers = yield* Pg.getBlockNotifications();
 
     // List of automute regexps
-    self.automutes = yield* Pg.getAutomutes();
+    self.automuteStore = yield* mkAutomuteStore();
+
+    self.cmdAutomute    = new CmdAutomute(self.automuteStore);
+    self.cmdConvert     = new CmdConvert();
+    self.cmdCrash       = new CmdCrash();
+    self.cmdMedian      = new CmdMedian();
+    self.cmdStreak      = new CmdStreak();
 
     // Connect to the site.
     self.client = new Client(Config);
@@ -148,7 +153,8 @@ Shiba.prototype.onBlock = function(block) {
 Shiba.prototype.checkAutomute = function*(msg) {
 
   // Match entire message against the regular expressions.
-  if (this.automutes.find(r => msg.message.match(r))) {
+  let automutes = this.automuteStore.get();
+  if (automutes.find(r => msg.message.match(r))) {
     this.client.doMute(msg.username, '36h');
     return true;
   }
@@ -169,12 +175,11 @@ Shiba.prototype.checkAutomute = function*(msg) {
 
   debugautomute('Url list: ' + JSON.stringify(urls));
 
-  for (let i in urls) {
-    let url = urls[i];
+  for (let url of urls) {
     debugautomute('Checking url: ' + url);
 
     // Run the regular expressions against the unshortened url.
-    let r = this.automutes.find(r => url.match(r));
+    let r = automutes.find(r => url.match(r));
     if (r) {
       debugautomute('URL matched ' + r);
       this.client.doMute(msg.username, '72h');
@@ -296,7 +301,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     yield* this.cmdCrash.handle(this.client, msg, rest);
     break;
   case 'automute':
-    yield* this.onCmdAutomute(msg, rest);
+    yield* this.cmdAutomute.handle(this.client, msg, rest);
     break;
   case 'median':
   case 'med':
@@ -472,30 +477,6 @@ Shiba.prototype.onCmdBlock = function*(msg) {
   }
 
   this.client.doSay(line);
-};
-
-Shiba.prototype.onCmdAutomute = function*(msg, rest) {
-  if (msg.role !== 'admin' &&
-      msg.role !== 'moderator') return;
-
-  let regex;
-  try {
-    let match = rest.match(/^\/(.*)\/([gi]*)$/);
-    regex = new RegExp(match[1], match[2]);
-  } catch(err) {
-    this.client.doSay('regex compile file: ' + err.message);
-    return;
-  }
-
-  try {
-    yield* Pg.addAutomute(msg.username, regex);
-  } catch(err) {
-    this.client.doSay('failed adding automute to database.');
-    return;
-  }
-
-  this.client.doSay('wow. so cool. very obedient');
-  this.automutes.push(regex);
 };
 
 let shiba = new Shiba();
