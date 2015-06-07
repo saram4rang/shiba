@@ -4,13 +4,8 @@ const debug         = require('debug')('shiba:cmd:convert');
 const ConvertParser = require('./ConvertParser').parser;
 const ExchangeRate  = require('../Util/ExchangeRate');
 
-module.exports = exports = Convert;
-
 function Convert() {
 }
-
-Convert.prototype.init = function*() {
-};
 
 Convert.prototype.handle = function*(client, msg, conv) {
 
@@ -118,3 +113,5 @@ function modFactor(mod) {
     return 1;
   }
 }
+
+module.exports = exports = Convert;

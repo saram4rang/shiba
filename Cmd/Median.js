@@ -1,15 +1,10 @@
 'use strict';
 
-const debug         = require('debug')('shiba:cmd:median');
-const Pg           =  require('../Pg');
-
-module.exports = exports = Median;
+const debug = require('debug')('shiba:cmd:median');
+const Pg    = require('../Pg');
 
 function Median() {
 }
-
-Median.prototype.init = function*() {
-};
 
 Median.prototype.handle = function*(client, msg, input) {
 
@@ -27,3 +22,5 @@ Median.prototype.handle = function*(client, msg, input) {
 
   client.doSay(response);
 };
+
+module.exports = exports = Median;

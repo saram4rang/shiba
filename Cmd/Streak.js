@@ -2,18 +2,13 @@
 
 const debug        = require('debug')('shiba:cmd:streak');
 const StreakParser = require('./StreakParser').parser;
-const Lib          =  require('../Lib');
-const Pg           =  require('../Pg');
+const Lib          = require('../Lib');
+const Pg           = require('../Pg');
 
 const MAX_NUM_GAMES = 8;
 
-module.exports = exports = Streak;
-
 function Streak() {
 }
-
-Streak.prototype.init = function*() {
-};
 
 Streak.prototype.handle = function*(client, msg, input) {
 
@@ -58,3 +53,5 @@ Streak.prototype.handle = function*(client, msg, input) {
 
   client.doSay(response);
 };
+
+module.exports = exports = Streak;

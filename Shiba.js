@@ -55,6 +55,7 @@ function Shiba() {
     self.setupBlockchain();
   }).catch(function(err) {
     // Abort immediately on startup.
+    console.error(err);
     throw err;
   });
 }

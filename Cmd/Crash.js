@@ -5,13 +5,8 @@ const CrashParser = require('./CrashParser').parser;
 const Lib         = require('../Lib');
 const Pg          = require('../Pg');
 
-module.exports = exports = Crash;
-
 function Crash() {
 }
-
-Crash.prototype.init = function*() {
-};
 
 Crash.prototype.handle = function*(client, msg, input) {
 
@@ -52,3 +47,5 @@ Crash.prototype.handle = function*(client, msg, input) {
     ')';
   client.doSay(line);
 };
+
+module.exports = exports = Crash;
