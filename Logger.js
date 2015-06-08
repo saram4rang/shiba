@@ -8,6 +8,8 @@ const Lib    =  require('./Lib');
 const Pg     =  require('./Pg');
 const Config =  require('./Config');
 
+const mkChatStore = require('./Store/Chat');
+
 function ensureDirSync(dir) {
   try { fs.mkdirSync(dir); }
   catch(e) { if (e.code !== 'EEXIST') throw e; }
@@ -16,70 +18,41 @@ ensureDirSync('gamelogs');
 ensureDirSync('gamelogs/unfinished');
 ensureDirSync('chatlogs');
 
-let client = new Client(Config);
+co(function*(){
 
-function setupConsoleLog() {
-  client.on('game_starting', function(info) {
-    let line =
-        "Starting " + info.game_id +
-        " " + info.server_seed_hash.substring(0,8);
-    process.stdout.write(line);
-  });
+  let chatStore = yield* mkChatStore(true);
 
-  client.on('game_started', function() {
-    process.stdout.write(".. ");
-  });
+  // Connect to the site
+  let client = new Client(Config);
 
-  client.on('game_crash', function(data) {
-    let gameInfo = client.getGameInfo();
-    let crash    = Lib.formatFactor(data.game_crash);
-    process.stdout.write(" @" + crash + "x " + gameInfo.verified + "\n");
-  });
-}
+  client.on('join', co.wrap(function*(data) {
+      yield* chatStore.mergeMessages(data.chat);
+    }));
+  client.on('msg', co.wrap(chatStore.addMessage.bind(chatStore)));
 
-function setupGamelogWriter() {
-  client.on('game_crash', function() {
-    let gameInfo    = client.getGameInfo();
-    let gameLogFile = 'gamelogs/' + gameInfo.game_id + '.json';
-    fs.writeFile(gameLogFile, JSON.stringify(gameInfo, null, ' '));
-  });
-
-  client.on('disconnect', function(data) {
-    if (client.game.state !== 'ENDED') {
-      let gameInfo = client.getGameInfo();
-      let gameLogFile = 'gamelogs/unfinished/' + gameInfo.game_id + '.json';
-
-      fs.writeFile(gameLogFile, JSON.stringify(gameInfo, null, ' '));
-    }
-
-    console.log('Client disconnected |', data, '|', typeof data);
-  });
-}
-
-function setupChatlogWriter() {
+  // Setup chatlog file writer
   let chatDate    = null;
   let chatStream  = null;
 
-  client.on('msg', function(msg) {
+  chatStore.on('msg', function(msg) {
     // Write to the chatlog file. We create a file for each date.
     let now = new Date(Date.now());
+
     if (!chatDate || now.getUTCDay() !== chatDate.getUTCDay()) {
       // End the old write stream for the previous date.
       if (chatStream) chatStream.end();
 
       // Create new write stream for the current date.
       let chatFile =
-          "chatlogs/" + now.getUTCFullYear() +
-          ('0'+(now.getUTCMonth()+1)).slice(-2) +
-          ('0'+now.getUTCDate()).slice(-2) + ".log";
+        "chatlogs/" + now.getUTCFullYear() +
+        ('0'+(now.getUTCMonth()+1)).slice(-2) +
+        ('0'+now.getUTCDate()).slice(-2) + ".log";
       chatDate   = now;
       chatStream = fs.createWriteStream(chatFile, {flags:'a'});
     }
     chatStream.write(JSON.stringify(msg) + '\n');
   });
-}
 
-function setupGamelogDb() {
   client.on('game_crash', function(data, info) {
     co(function*() {
       try {
@@ -89,22 +62,4 @@ function setupGamelogDb() {
       }
     });
   });
-}
-
-function setupChatlogDb() {
-  client.on('msg', function(msg) {
-    co(function*() {
-      try {
-        yield* Pg.putMsg(msg);
-      } catch(err) {
-        console.error('Failed to log msg:', msg, '\nError:', err);
-      }
-    });
-  });
-}
-
-setupChatlogWriter();
-setupConsoleLog();
-setupGamelogWriter();
-setupChatlogDb();
-setupGamelogDb();
+});

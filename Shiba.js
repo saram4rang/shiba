@@ -39,7 +39,7 @@ function Shiba() {
 
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
-    self.chatStore     = yield* mkChatStore();
+    self.chatStore     = yield* mkChatStore(false);
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();

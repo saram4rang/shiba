@@ -6,13 +6,14 @@ const debug        = require('debug')('shiba:store:chat');
 const debugv       = require('debug')('verbose:store:chat');
 const Pg           = require('../Pg');
 
-function ChatStore(store) {
+function ChatStore(store, writeToDb) {
   debug('Initializing chat store');
   EventEmitter.call(this);
 
   // This array holds all the chat messages sorted from
   // old to new.
   this.store = store || [];
+  this.writeToDb = writeToDb;
 }
 
 inherits(ChatStore, EventEmitter);
@@ -69,7 +70,8 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
     } else if (nt < ot) {
       debugv('Merge new message: %s', JSON.stringify(nm));
       try {
-        yield* Pg.putMsg(nm);
+        if (self.writeToDb)
+          yield* Pg.putMsg(nm);
       } catch(err) {
         console.error('Failed to log msg:', nm, '\nError:', err);
       }
@@ -95,9 +97,9 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
 ChatStore.prototype.addMessage = function*(msg) {
   debug('Adding message: ' + JSON.stringify(msg));
 
-  this.emit('msg', msg);
   try {
-    yield* Pg.putMsg(msg);
+    if (this.writeToDb)
+      yield* Pg.putMsg(msg);
   } catch(err) {
     console.error('Failed to log msg:', msg, '\nError:', err);
   }
@@ -106,6 +108,7 @@ ChatStore.prototype.addMessage = function*(msg) {
     this.store.shift();
 
   this.store.push(msg);
+  this.emit('msg', msg);
 };
 
 ChatStore.prototype.getChatMessages = function(username, after) {
@@ -119,10 +122,10 @@ ChatStore.prototype.get = function() {
   return this.store;
 };
 
-function* make() {
+function* make(writeToDb) {
   debug('Create chat store');
   let msgs = yield* Pg.getLastMessages();
-  return new ChatStore(msgs);
+  return new ChatStore(msgs, writeToDb);
 }
 
 module.exports = exports = make;
