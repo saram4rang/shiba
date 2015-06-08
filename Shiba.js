@@ -48,9 +48,7 @@ function Shiba() {
     // Connect to the site.
     self.client = new Client(Config);
 
-    self.setupChatHook();
-    // self.setupConsoleLog();
-    // self.setupLossStreakComment();
+    self.client.on('msg', co.wrap(self.onMsg.bind(self)));
     self.setupScamComment();
     self.setupBlockchain();
   }).catch(function(err) {
@@ -59,54 +57,6 @@ function Shiba() {
     throw err;
   });
 }
-
-Shiba.prototype.setupChatHook = function() {
-  let self = this;
-  self.client.on('msg', function(msg) {
-    if (msg.type !== 'say') return;
-    co(function*(){ yield* self.onSay(msg); })
-      .catch(err => console.error('[ERROR] onSay:', err.stack));
-  });
-};
-
-Shiba.prototype.setupConsoleLog = function() {
-  let self = this;
-  self.client.on('game_starting', function(info) {
-    let line =
-        "Starting " + info.game_id +
-        " " + info.server_seed_hash.substring(0,8);
-    process.stdout.write(line);
-  });
-
-  self.client.on('game_started', function(data) {
-    process.stdout.write(".. ");
-  });
-
-  self.client.on('game_crash', function(data) {
-    let gameInfo = self.client.getGameInfo();
-    let crash = Lib.formatFactor(data.game_crash);
-    process.stdout.write(" @" + crash + "x " + gameInfo.verified + "\n");
-  });
-};
-
-Shiba.prototype.setupLossStreakComment = function() {
-  let self = this;
-  self.client.on('game_crash', function(data) {
-    let gameHistory = self.client.gameHistory;
-
-    // Determine loss streak
-    let streak = gameHistory.length > 3;
-    let i;
-    for (i = 0; i < Math.min(gameHistory.length - 1, 4); ++i)
-      streak = streak && gameHistory[i].game_crash <= 130;
-
-    // Don't repeat yourself in a streak
-    streak = streak && (gameHistory.length < 4 ||
-                        gameHistory[i + 1].game_crash > 130);
-
-    if (streak) self.client.doSay("wow. such rape. very butthurt");
-  });
-};
 
 Shiba.prototype.setupScamComment = function() {
   let self = this;
@@ -224,6 +174,11 @@ Shiba.prototype.checkRate = function*(msg) {
   }
 
   return false;
+};
+
+Shiba.prototype.onMsg = function*(msg) {
+  if (msg.type === 'say')
+    return yield* this.onSay(msg);
 };
 
 Shiba.prototype.onSay = function*(msg) {
