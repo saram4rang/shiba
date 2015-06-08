@@ -3,7 +3,7 @@
 const assert   = require('assert');
 const pg       = require('co-pg')(require('pg'));
 const debug    = require('debug')('shiba:db');
-const debugpg  = require('debug')('shiba:db:pg');
+const debugpg  = require('debug')('verbose:db:pg');
 
 const Cache  = require('./Util/Cache');
 const Config = require('./Config');
@@ -99,12 +99,12 @@ function* withTransaction(runner) {
   return yield* withClient(function*(query) {
     let txid = txSeq++;
     try {
-      debug('[%d] Starting transaction', txid);
+      debugpg('[%d] Starting transaction', txid);
       yield* query('BEGIN');
       let result = yield* runner(query);
-      debug('[%d] Committing transaction', txid);
+      debugpg('[%d] Committing transaction', txid);
       yield* query('COMMIT');
-      debug('[%d] Finished transaction', txid);
+      debugpg('[%d] Finished transaction', txid);
       return result;
     } catch (ex) {
       try {
