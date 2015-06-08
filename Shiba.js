@@ -21,6 +21,7 @@ const CmdMedian    =  require('./Cmd/Median');
 const CmdStreak    =  require('./Cmd/Streak');
 
 const mkAutomuteStore = require('./Store/Automute');
+const mkChatStore     = require('./Store/Chat');
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -38,6 +39,7 @@ function Shiba() {
 
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
+    self.chatStore     = yield* mkChatStore();
 
     self.cmdAutomute    = new CmdAutomute(self.automuteStore);
     self.cmdConvert     = new CmdConvert();
@@ -48,6 +50,11 @@ function Shiba() {
     // Connect to the site.
     self.client = new Client(Config);
 
+    // Setup the chat bindings.
+    self.client.on('join', co.wrap(function*(data) {
+      yield* self.chatStore.mergeMessages(data.chat);
+    }));
+    self.client.on('msg', co.wrap(self.chatStore.addMessage.bind(self.chatStore)));
     self.client.on('msg', co.wrap(self.onMsg.bind(self)));
     self.setupScamComment();
     self.setupBlockchain();
@@ -141,20 +148,6 @@ Shiba.prototype.checkAutomute = function*(msg) {
   return false;
 };
 
-Shiba.prototype.getChatMessages = function(username, after) {
-  let messages = [];
-  let chatHistory = this.client.chatHistory;
-  for (let i = 0; i < chatHistory.length; ++i) {
-    let then = new Date(chatHistory[i].time);
-    if (then < after) break;
-
-    if (chatHistory[i].type === 'say' &&
-        chatHistory[i].username === username)
-      messages.push(chatHistory[i]);
-  }
-  return messages;
-};
-
 Shiba.prototype.checkRate = function*(msg) {
   let rates = [{count: 4, seconds: 1, mute: '15m'},
                {count: 5, seconds: 5, mute: '15m'},
@@ -164,7 +157,7 @@ Shiba.prototype.checkRate = function*(msg) {
   let self = this;
   let rate = rates.find(rate => {
     let after    = new Date(Date.now() - rate.seconds*1000);
-    let messages = self.getChatMessages(msg.username, after);
+    let messages = self.chatStore.getChatMessages(msg.username, after);
     return messages.length > rate.count;
   });
 
@@ -195,7 +188,7 @@ Shiba.prototype.onSay = function*(msg) {
 
 Shiba.prototype.checkCmdRate = function*(msg) {
   let after    = new Date(Date.now() - 10*1000);
-  let messages = this.getChatMessages(msg.username, after);
+  let messages = this.chatStore.getChatMessages(msg.username, after);
 
   let count = 0;
   messages.forEach(m => { if (m.message.match(cmdReg)) ++count; });

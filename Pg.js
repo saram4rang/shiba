@@ -263,6 +263,52 @@ exports.putMsg = function*(msg) {
   }
 };
 
+exports.getLastMessages = function*() {
+  debug('Retrieving last chat messages');
+
+  let sql1 =
+    "SELECT\
+       chats.created AS time,\
+       'say' AS type,\
+       username,\
+       message\
+     FROM chats\
+     JOIN users ON chats.user_id = users.id\
+     ORDER BY time DESC\
+     LIMIT 50";
+  let sql2 =
+    "SELECT\
+       mutes.created AS time,\
+       'mute' AS type,\
+       m.username AS moderator,\
+       u.username,\
+       timespec,\
+       shadow\
+     FROM mutes\
+     JOIN users AS m ON mutes.moderator_id = m.id\
+     JOIN users AS u ON mutes.user_id = u.id\
+     ORDER BY time DESC\
+     LIMIT 30";
+  let sql3 =
+    "SELECT\
+       unmutes.created AS time,\
+       'unmute' AS type,\
+       m.username AS moderator,\
+       u.username,\
+       shadow\
+     FROM unmutes\
+     JOIN users AS m ON unmutes.moderator_id = m.id\
+     JOIN users AS u ON unmutes.user_id = u.id\
+     ORDER BY time DESC\
+     LIMIT 30";
+
+  let res = yield [sql1,sql2,sql3].map(query);
+  res = res[0].rows.concat(res[1].rows,res[2].rows);
+  res = res.sort((a,b) => new Date(a.time) - new Date(b.time));
+
+  return res;
+};
+
 exports.putGame = function*(info) {
   let players = Object.keys(info.player_info);
 

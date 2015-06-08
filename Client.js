@@ -69,7 +69,6 @@ function Client(config) {
   this.tickModel = null;
 
   this.gameHistory = [];
-  this.chatHistory = [];
 
   // Save configuration and stuff.
   this.config = config;
@@ -428,10 +427,6 @@ Client.prototype.onCashedOut = function(data) {
 
 Client.prototype.onMsg = function(msg) {
   debugchat('Msg: %s', JSON.stringify(msg));
-  // Add the current chat message to the chat history
-  if (this.chatHistory.length >= 100)
-    this.chatHistory.pop();
-  this.chatHistory.unshift(msg);
   this.emit('msg', msg);
 };
 
