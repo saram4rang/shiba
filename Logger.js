@@ -9,6 +9,7 @@ const Pg     =  require('./Pg');
 const Config =  require('./Config');
 
 const mkChatStore = require('./Store/Chat');
+const mkGameStore = require('./Store/Game');
 
 function ensureDirSync(dir) {
   try { fs.mkdirSync(dir); }
@@ -21,14 +22,21 @@ ensureDirSync('chatlogs');
 co(function*(){
 
   let chatStore = yield* mkChatStore(true);
+  let gameStore = yield* mkGameStore(true);
 
   // Connect to the site
   let client = new Client(Config);
 
   client.on('join', co.wrap(function*(data) {
-      yield* chatStore.mergeMessages(data.chat);
-    }));
+    let games = data.table_history.sort((a,b) => a.game_id - b.game_id);
+    yield [ chatStore.mergeMessages(data.chat),
+            gameStore.mergeGames(games)
+          ];
+  }));
   client.on('msg', co.wrap(chatStore.addMessage.bind(chatStore)));
+  client.on('game_crash', co.wrap(function*(data, gameInfo) {
+    yield* gameStore.addGame(gameInfo);
+  }));
 
   // Setup chatlog file writer
   let chatDate    = null;
@@ -51,15 +59,5 @@ co(function*(){
       chatStream = fs.createWriteStream(chatFile, {flags:'a'});
     }
     chatStream.write(JSON.stringify(msg) + '\n');
-  });
-
-  client.on('game_crash', function(data, info) {
-    co(function*() {
-      try {
-        yield* Pg.putGame(info);
-      } catch(err) {
-        console.error('Failed to log game #' + info.game_id + '.\nError:', err);
-      }
-    });
   });
 });

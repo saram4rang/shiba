@@ -68,8 +68,6 @@ function Client(config) {
   /** A linear regression model to estimate tick times. */
   this.tickModel = null;
 
-  this.gameHistory = [];
-
   // Save configuration and stuff.
   this.config = config;
 
@@ -194,7 +192,6 @@ Client.prototype.onJoin = function(data) {
 
   debug('Resetting client state\n%s', JSON.stringify(copy, null, ' '));
 
-  this.gameHistory    = data.table_history;
   this.lastServerSeed = data.last_hash;
   this.game =
     { id:              data.game_id,
@@ -368,13 +365,6 @@ Client.prototype.onGameCrash = function(data) {
     this.game.players[playerName].bonus = data.bonuses[playerName];
   }
 
-  let gameInfo = this.getGameInfo();
-  // Add the current game info to the game history and if the
-  // game history is larger than 40 remove one element
-  if (this.gameHistory.length >= 40)
-    this.gameHistory.pop();
-  this.gameHistory.unshift(gameInfo);
-
   if (this.userState === 'PLAYING' ||
       this.state === 'CASHINGOUT') {
     debuguser('User state: %s -> CRASHED', this.userState);
@@ -382,6 +372,7 @@ Client.prototype.onGameCrash = function(data) {
     this.emit('user_loss', data);
   }
 
+  let gameInfo = this.getGameInfo();
   this.emit('game_crash', data, gameInfo);
 };
 

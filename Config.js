@@ -8,5 +8,7 @@ module.exports =
     WEBSERVER:      process.env.BUSTABIT_WEBSERVER || "https://www.bustabit.com",
     OXR_APP_ID:     process.env.OXR_APP_ID,
     SESSION:        process.env.SHIBA_SESSION,
-    DATABASE:       process.env.SHIBA_DATABASE || 'postgres://localhost/shibadb'
+    DATABASE:       process.env.SHIBA_DATABASE || 'postgres://localhost/shibadb',
+    CHAT_HISTORY:   process.env.SHIBA_CHAT_HISTORY || 100,
+    GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 100
   };

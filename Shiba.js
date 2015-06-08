@@ -22,6 +22,7 @@ const CmdStreak    =  require('./Cmd/Streak');
 
 const mkAutomuteStore = require('./Store/Automute');
 const mkChatStore     = require('./Store/Chat');
+const mkGameStore     = require('./Store/Game');
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -40,6 +41,7 @@ function Shiba() {
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
     self.chatStore     = yield* mkChatStore(false);
+    self.gameStore     = yield* mkGameStore(false);
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();
@@ -52,10 +54,16 @@ function Shiba() {
 
     // Setup the chat bindings.
     self.client.on('join', co.wrap(function*(data) {
-      yield* self.chatStore.mergeMessages(data.chat);
+      let games = data.table_history.sort((a,b) => a.game_id - b.game_id);
+      yield [ self.chatStore.mergeMessages(data.chat),
+              self.gameStore.mergeGames(games)
+            ];
     }));
     self.client.on('msg', co.wrap(self.chatStore.addMessage.bind(self.chatStore)));
     self.client.on('msg', co.wrap(self.onMsg.bind(self)));
+    self.client.on('game_crash', co.wrap(function*(data, gameInfo) {
+      yield* self.gameStore.addGame(gameInfo);
+    }));
 
     self.setupScamComment();
     self.setupBlockchain();

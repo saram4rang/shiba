@@ -4,6 +4,7 @@ const EventEmitter = require('events').EventEmitter;
 const inherits     = require('util').inherits;
 const debug        = require('debug')('shiba:store:chat');
 const debugv       = require('debug')('verbose:store:chat');
+const Config       = require('../Config');
 const Pg           = require('../Pg');
 
 function ChatStore(store, writeToDb) {
@@ -104,7 +105,7 @@ ChatStore.prototype.addMessage = function*(msg) {
     console.error('Failed to log msg:', msg, '\nError:', err);
   }
 
-  if (this.store.length >= 100)
+  if (this.store.length > Config.CHAT_HISTORY)
     this.store.shift();
 
   this.store.push(msg);

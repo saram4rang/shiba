@@ -275,7 +275,7 @@ exports.getLastMessages = function*() {
      FROM chats\
      JOIN users ON chats.user_id = users.id\
      ORDER BY time DESC\
-     LIMIT 50";
+     LIMIT $1";
   let sql2 =
     "SELECT\
        mutes.created AS time,\
@@ -288,7 +288,7 @@ exports.getLastMessages = function*() {
      JOIN users AS m ON mutes.moderator_id = m.id\
      JOIN users AS u ON mutes.user_id = u.id\
      ORDER BY time DESC\
-     LIMIT 30";
+     LIMIT $1";
   let sql3 =
     "SELECT\
        unmutes.created AS time,\
@@ -300,9 +300,10 @@ exports.getLastMessages = function*() {
      JOIN users AS m ON unmutes.moderator_id = m.id\
      JOIN users AS u ON unmutes.user_id = u.id\
      ORDER BY time DESC\
-     LIMIT 30";
+     LIMIT $1";
+  let par = [Config.CHAT_HISTORY];
 
-  let res = yield [sql1,sql2,sql3].map(query);
+  let res = yield [sql1,sql2,sql3].map((sql) => query(sql,par));
   res = res[0].rows.concat(res[1].rows,res[2].rows);
   res = res.sort((a,b) => new Date(a.time) - new Date(b.time));
 
@@ -330,7 +331,7 @@ exports.putGame = function*(info) {
     let par =
       [ info.game_id,
         info.game_crash,
-        info.server_seed
+        info.server_seed || info.hash
       ];
     yield* query(sql, par);
 
@@ -382,6 +383,25 @@ exports.putLick = function*(username, message, creatorname) {
     'VALUES ($1, $2, $3)';
   let par = [user.id, message, creator.id];
   yield* query(sql, par);
+};
+
+exports.getLastGames = function*() {
+  debug('Retrieving last games');
+
+  let sql =
+    'WITH t AS (SELECT\
+                  id AS game_id,\
+                  game_crash,\
+                  created,\
+                  seed AS hash\
+                FROM games\
+                ORDER BY id\
+                DESC LIMIT $1)\
+     SELECT * FROM t ORDER BY game_id';
+  let par = [Config.GAME_HISTORY];
+
+  let data = yield* query(sql,par);
+  return data.rows;
 };
 
 exports.getLick = function*(username) {
