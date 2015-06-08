@@ -112,10 +112,16 @@ ChatStore.prototype.addMessage = function*(msg) {
 };
 
 ChatStore.prototype.getChatMessages = function(username, after) {
-  let i = 0;
-  while (this.store[i].time < after)
-    ++i;
-  return this.store.slice(i);
+  let messages = [];
+  for (let msg of this.store) {
+    let then = new Date(msg.time);
+
+    if (after <= then &&
+        msg.type === 'say' &&
+        msg.username === username)
+      messages.push(msg);
+  }
+  return messages;
 };
 
 ChatStore.prototype.get = function() {
