@@ -41,11 +41,11 @@ function Shiba() {
     self.automuteStore = yield* mkAutomuteStore();
     self.chatStore     = yield* mkChatStore();
 
-    self.cmdAutomute    = new CmdAutomute(self.automuteStore);
-    self.cmdConvert     = new CmdConvert();
-    self.cmdCrash       = new CmdCrash();
-    self.cmdMedian      = new CmdMedian();
-    self.cmdStreak      = new CmdStreak();
+    self.cmdAutomute = new CmdAutomute(self.automuteStore);
+    self.cmdConvert  = new CmdConvert();
+    self.cmdCrash    = new CmdCrash();
+    self.cmdMedian   = new CmdMedian();
+    self.cmdStreak   = new CmdStreak();
 
     // Connect to the site.
     self.client = new Client(Config);
@@ -56,11 +56,12 @@ function Shiba() {
     }));
     self.client.on('msg', co.wrap(self.chatStore.addMessage.bind(self.chatStore)));
     self.client.on('msg', co.wrap(self.onMsg.bind(self)));
+
     self.setupScamComment();
     self.setupBlockchain();
   }).catch(function(err) {
-    // Abort immediately on startup.
-    console.error(err);
+    // Abort immediately when an exception is thrown on startup.
+    console.error(err.stack);
     throw err;
   });
 }
@@ -70,9 +71,9 @@ Shiba.prototype.setupScamComment = function() {
   self.client.on('game_crash', function(data) {
     let gameInfo = self.client.getGameInfo();
     console.assert(gameInfo.hasOwnProperty('verified'));
-    if (gameInfo.verified !== 'ok') {
+
+    if (gameInfo.verified !== 'ok')
       self.client.doSay('wow. such scam. very hash failure.');
-    }
   });
 };
 
