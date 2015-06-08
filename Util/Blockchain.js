@@ -1,9 +1,10 @@
 'use strict';
 
-const EventEmitter =  require('events').EventEmitter;
-const inherits     =  require('util').inherits;
-const WebSocket    =  require('ws');
-const debug        =  require('debug')('shiba:blockchain');
+const EventEmitter = require('events').EventEmitter;
+const inherits     = require('util').inherits;
+const WebSocket    = require('ws');
+const debug        = require('debug')('shiba:blockchain');
+const debugv       = require('debug')('verbose:blockchain');
 
 function Blockchain() {
   EventEmitter.call(this);
@@ -18,7 +19,7 @@ function Blockchain() {
 inherits(Blockchain, EventEmitter);
 
 Blockchain.prototype.doScheduleConnect = function() {
-  debug('Reconnecting in %d ms.', this.reconnectInterval);
+  debugv('Reconnecting in %d ms.', this.reconnectInterval);
   setTimeout(this.doConnect.bind(this), this.reconnectInterval);
 
   clearTimeout(this.pingIntervalTimer);
@@ -30,7 +31,7 @@ Blockchain.prototype.doScheduleConnect = function() {
 };
 
 Blockchain.prototype.doConnect = function() {
-  debug('Connecting to Blockchain API.');
+  debugv('Connecting to Blockchain API.');
   let self = this;
   let socket = new WebSocket('wss://ws.blockchain.info/inv');
   socket.on('error', self.onError.bind(self));
@@ -44,7 +45,7 @@ Blockchain.prototype.doConnect = function() {
 };
 
 Blockchain.prototype.onOpen = function() {
-  debug('Connection established.');
+  debugv('Connection established.');
 
   // Subscribe to new blocks.
   this.socket.send('{"op":"blocks_sub"}', this.onError.bind(this));
@@ -60,7 +61,7 @@ Blockchain.prototype.onOpen = function() {
 Blockchain.prototype.onMessage = function(message, flags) {
   try {
     let data = JSON.parse(message);
-    debug("Op received: '%s'.", data.op);
+    debugv("Op received: '%s'.", data.op);
 
     switch (data.op) {
     case 'status':
@@ -81,19 +82,19 @@ Blockchain.prototype.onMessage = function(message, flags) {
 
 Blockchain.prototype.onError = function(error) {
   if (error) {
-    debug('Connection error: ' + error);
+    debugv('Connection error: ' + error);
     this.doScheduleConnect();
   }
 };
 
 Blockchain.prototype.onClose = function(code, message) {
-  debug('Connection closed with code %s: %s.', JSON.stringify(code), message);
+  debugv('Connection closed with code %s: %s.', JSON.stringify(code), message);
   this.doScheduleConnect();
   this.emit('disconnect');
 };
 
 Blockchain.prototype.resetPingTimer = function() {
-  debug('Resetting ping interval timer: %d ms.', this.pingInterval);
+  debugv('Resetting ping interval timer: %d ms.', this.pingInterval);
   clearTimeout(this.pingIntervalTimer);
   clearTimeout(this.pingTimeoutTimer);
   this.pingIntervalTimer =
@@ -103,7 +104,7 @@ Blockchain.prototype.resetPingTimer = function() {
 
 
 Blockchain.prototype.onPingInterval = function() {
-  debug('Ping interval. Sending ping. Timeout: %d ms.', this.pingTimeout);
+  debugv('Ping interval. Sending ping. Timeout: %d ms.', this.pingTimeout);
   try {
     this.socket.ping();
     this.pingTimeoutTimer =
@@ -117,12 +118,12 @@ Blockchain.prototype.onPingInterval = function() {
 };
 
 Blockchain.prototype.onPingTimeout = function() {
-  debug('Ping timed out. Closing connection.');
+  debugv('Ping timed out. Closing connection.');
   this.socket.close();
 };
 
 Blockchain.prototype.onPong = function() {
-  debug('Pong received.');
+  debugv('Pong received.');
   this.resetPingTimer();
 };
 
