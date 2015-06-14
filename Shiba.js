@@ -16,7 +16,7 @@ const Pg           =  require('./Pg');
 
 const CmdAutomute  =  require('./Cmd/Automute');
 const CmdConvert   =  require('./Cmd/Convert');
-const CmdCrash     =  require('./Cmd/Crash');
+const CmdBust      =  require('./Cmd/Bust');
 const CmdMedian    =  require('./Cmd/Median');
 const CmdStreak    =  require('./Cmd/Streak');
 
@@ -45,7 +45,7 @@ function Shiba() {
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();
-    self.cmdCrash    = new CmdCrash();
+    self.cmdBust     = new CmdBust();
     self.cmdMedian   = new CmdMedian();
     self.cmdStreak   = new CmdStreak();
 
@@ -256,7 +256,11 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'crsh':
   case 'cra':
   case 'cr':
-    yield* this.cmdCrash.handle(this.client, msg, rest);
+    this.client.doSay('@' + msg.username + ' use !bust instead');
+  case 'bust':
+  case 'bst':
+  case 'bt':
+    yield* this.cmdBust.handle(this.client, msg, rest);
     break;
   case 'automute':
     yield* this.cmdAutomute.handle(this.client, msg, rest);
@@ -360,7 +364,7 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 
   // Special treatment of rape.
   if (user === 'rape') {
-    yield* this.cmdCrash.handle(this.client, msg, '< 1.05');
+    yield* this.cmdBust.handle(this.client, msg, '< 1.05');
     return;
   }
 

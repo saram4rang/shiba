@@ -1,30 +1,30 @@
 'use strict';
 
-const debug       = require('debug')('shiba:cmd:crash');
-const CrashParser = require('./CrashParser').parser;
+const debug       = require('debug')('shiba:cmd:bust');
+const BustParser = require('./BustParser').parser;
 const Lib         = require('../Lib');
 const Pg          = require('../Pg');
 
-function Crash() {
+function Bust() {
 }
 
-Crash.prototype.handle = function*(client, msg, input) {
+Bust.prototype.handle = function*(client, msg, input) {
 
   let qry;
   try {
-    qry = CrashParser.parse(input);
+    qry = BustParser.parse(input);
   } catch(err) {
     client.doSay('wow. very usage failure. such retry');
     return;
   }
 
-  debug('Crash parse result: ' + JSON.stringify(qry));
+  debug('Bust parse result: ' + JSON.stringify(qry));
 
   let res;
   try {
-    res = yield* Pg.getCrash(qry);
+    res = yield* Pg.getBust(qry);
   } catch(err) {
-    console.error('[ERROR] onCmdCrash', err.stack);
+    console.error('[ERROR] onCmdBust', err.stack);
     client.doSay('wow. such database fail');
     return;
   }
@@ -48,4 +48,4 @@ Crash.prototype.handle = function*(client, msg, input) {
   client.doSay(line);
 };
 
-module.exports = exports = Crash;
+module.exports = exports = Bust;

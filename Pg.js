@@ -416,8 +416,8 @@ exports.getLick = function*(username) {
   return {username: user.username, licks: licks};
 };
 
-exports.getCrash = function*(qry) {
-  debug('Getting last crashpoint: ' + JSON.stringify(qry));
+exports.getBust = function*(qry) {
+  debug('Getting last bust: ' + JSON.stringify(qry));
   let sql, par;
   if (qry === 'MAX') {
     sql = 'SELECT * FROM games WHERE id =' +
