@@ -6,7 +6,6 @@ const debugblock   =  require('debug')('shiba:blocknotify');
 const debugautomute = require('debug')('shiba:automute');
 
 const profanity    =  require('./profanity');
-const Blockchain   =  require('./Util/Blockchain');
 const Unshort      =  require('./Util/Unshort');
 
 const Client       =  require('./Client');
@@ -20,6 +19,7 @@ const CmdBust      =  require('./Cmd/Bust');
 const CmdMedian    =  require('./Cmd/Median');
 const CmdStreak    =  require('./Cmd/Streak');
 
+const mkCmdBlock     =  require('./Cmd/Block');
 const mkAutomuteStore = require('./Store/Automute');
 const mkChatStore     = require('./Store/Chat');
 const mkGameStore     = require('./Store/Game');
@@ -32,11 +32,6 @@ function Shiba() {
   let self = this;
 
   co(function*(){
-    // Last received block information.
-    self.block = yield* Pg.getLatestBlock();
-    // Awkward name for an array that holds names of users which
-    // will be when a new block has been mined.
-    self.blockNotifyUsers = yield* Pg.getBlockNotifications();
 
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
@@ -45,6 +40,7 @@ function Shiba() {
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();
+    self.cmdBlock    = yield mkCmdBlock();
     self.cmdBust     = new CmdBust();
     self.cmdMedian   = new CmdMedian();
     self.cmdStreak   = new CmdStreak();
@@ -59,14 +55,19 @@ function Shiba() {
               self.gameStore.mergeGames(games)
             ];
     }));
-    self.client.on('msg', co.wrap(self.chatStore.addMessage.bind(self.chatStore)));
-    self.client.on('msg', co.wrap(self.onMsg.bind(self)));
+    self.client.on('msg', function(msg) {
+      co(function*(){
+        yield* self.chatStore.addMessage(msg);
+        if (msg.type === 'say')
+          yield* self.onSay(msg);
+      }).catch(err => console.error('[ERROR] onMsg:', err.stack));
+    });
     self.client.on('game_crash', co.wrap(function*(data, gameInfo) {
       yield* self.gameStore.addGame(gameInfo);
     }));
 
+    self.cmdBlock.setClient(self.client);
     self.setupScamComment();
-    self.setupBlockchain();
   }).catch(function(err) {
     // Abort immediately when an exception is thrown on startup.
     console.error(err.stack);
@@ -83,38 +84,6 @@ Shiba.prototype.setupScamComment = function() {
     if (gameInfo.verified !== 'ok')
       self.client.doSay('wow. such scam. very hash failure.');
   });
-};
-
-Shiba.prototype.setupBlockchain = function() {
-  this.blockchain = new Blockchain();
-  this.blockchain.on('block', this.onBlock.bind(this));
-};
-
-Shiba.prototype.onBlock = function(block) {
-  let newBlock =
-    { height: block.height,
-      hash: block.hash,
-      confirmation: new Date(block.time*1000),
-      notification: new Date()
-    };
-
-  let self = this;
-  co(function*(){
-    yield* Pg.putBlock(newBlock);
-
-    // Check if block is indeed new and only signal in this case.
-    if (newBlock.height > self.block.height) {
-      self.block = newBlock;
-
-      if (self.blockNotifyUsers.length > 0) {
-        let users = self.blockNotifyUsers.join(': ') + ': ';
-        let line = users + 'Block #' + newBlock.height + ' mined.';
-        self.client.doSay(line);
-        self.blockNotifyUsers = [];
-        yield* Pg.clearBlockNotifications();
-      }
-    }
-  }).catch(err => console.error('[ERROR] onBlock:', err));
 };
 
 Shiba.prototype.checkAutomute = function*(msg) {
@@ -176,11 +145,6 @@ Shiba.prototype.checkRate = function*(msg) {
   }
 
   return false;
-};
-
-Shiba.prototype.onMsg = function*(msg) {
-  if (msg.type === 'say')
-    return yield* this.onSay(msg);
 };
 
 Shiba.prototype.onSay = function*(msg) {
@@ -249,7 +213,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'blck':
   case 'blk':
   case 'bl':
-    yield* this.onCmdBlock(msg, rest);
+    yield* this.cmdBlock.handle(this.client, msg, rest);
     break;
   case 'crash':
   case 'cras':
