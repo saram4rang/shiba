@@ -17,6 +17,7 @@ const CmdAutomute  =  require('./Cmd/Automute');
 const CmdConvert   =  require('./Cmd/Convert');
 const CmdBust      =  require('./Cmd/Bust');
 const CmdMedian    =  require('./Cmd/Median');
+const CmdProb      =  require('./Cmd/Prob');
 const CmdStreak    =  require('./Cmd/Streak');
 
 const mkCmdBlock     =  require('./Cmd/Block');
@@ -43,6 +44,7 @@ function Shiba() {
     self.cmdBlock    = yield mkCmdBlock();
     self.cmdBust     = new CmdBust();
     self.cmdMedian   = new CmdMedian();
+    self.cmdProb     = new CmdProb();
     self.cmdStreak   = new CmdStreak();
 
     // Connect to the site.
@@ -232,6 +234,13 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'median':
   case 'med':
     yield* this.cmdMedian.handle(this.client, msg, rest);
+    break;
+  case 'prob':
+  case 'prb':
+  case 'pob':
+  case 'pb':
+  case 'p':
+    yield* this.cmdProb.handle(this.client, msg, rest);
     break;
   case 'streak':
     yield* this.cmdStreak.handle(this.client, msg, rest);

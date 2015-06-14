@@ -134,5 +134,29 @@ module.exports =
         let e = Math.pow(2,52);
 
         return Math.floor((100 * e - h) / (e - h));
+      },
+    winProb:
+      function (factor) {
+        return 9900 / (101*(factor-1));
+      },
+    houseEdge:
+      function (factor) {
+        let p1,p2,p3;
+        let v1,v2,v3;
+
+        // Instant crash.
+        p1 = 1/101;
+        v1 = 1;
+
+        // Player win.
+        p2 = this.winProb(factor);
+        v2 = - 0.01 - (factor - 100)/100;
+
+        // Player loss.
+        p3 = 1 - p1 - p2;
+        v3 = 0.99;
+
+        // Expected value.
+        return p1 * v1 + p2 * v2 + p3 * v3;
       }
   };
