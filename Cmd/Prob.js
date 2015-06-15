@@ -23,9 +23,10 @@ Prob.prototype.handle = function*(client, msg, input) {
   if (qry.hasOwnProperty('min') && qry.min > 0)
     res = Lib.winProb(qry.min);
   if (qry.hasOwnProperty('max'))
-    res -= Lib.winProb(qry.max+1);
+    res -= Lib.winProb(qry.max ? qry.max+1 : 100);
+  res *= 100;
 
-  let line = 'Probability of ' + input + ': ' + res;
+  let line = 'Probability of ' + input + ': ' + res.toFixed(6) + '%';
   client.doSay(line);
 };
 
