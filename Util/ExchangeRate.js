@@ -51,6 +51,7 @@ function* getRates() {
   importpolo('DOGE'); rates.KOINU = 1e8 * rates.DOGE;
   importpolo('LTC');
   importpolo('RDD');
+  importpolo('NXT');
 
   return rates;
 }

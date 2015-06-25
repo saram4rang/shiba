@@ -38,19 +38,20 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       "SOS"|"SRD"|"STD"|"SVC"|"SYP"|"SZL"|"THB"|"TJS"|"TMT"|"TND"|"TOP"|"TRY"|
       "TTD"|"TWD"|"TZS"|"UAH"|"UGX"|"USD"|"UYU"|"UZS"|"VEF"|"VND"|"VUV"|"WST"|
       "XAF"|"XAG"|"XAU"|"XCD"|"XDR"|"XOF"|"XPF"|"YER"|"ZAR"|"ZMK"|"ZMW"|"ZWL"|
-      /* Previous metals*/
+      /* Precious metals*/
       "GOLD"|"SILVER"|
       /* Additional cryptocurrency codes. */
       "XBT"|"BITCOINS"|"BITCOIN"|
       "BITS"|"BIT"|
-      "SATOSHI"|"SAT"|
+      "SATOSHI"|"SATOSHIS|""SAT"|
       "CLAMS"|"CLAM"|"CLAMCOINS"|"CLAMCOIN"|
       "JDCOINS"|"JDCOIN"|"JD-COINS"|"JD-COIN"|"JUSTDICECOINS"|"JUSTDICECOIN"|
       "CORNEREDCOINS"|"CORNEREDCOIN"|
       "XDG"|"DOGE"|"DOGECOINS"|"DOGECOIN"|
       "子犬"|"KOINU"|
       "LTC"|"LITECOINS"|"LITECOIN"|
-      "RDD"|"REDDCOINS"|"REDDCOIN"
+      "RDD"|"REDDCOINS"|"REDDCOIN"|
+      "NXT"|"NXTCOIN"
 
 /* Currency signs. Currently doesn't include "¥" because it could
  * stand for either CNY or JPY. */
@@ -114,6 +115,7 @@ function normIso(sym) {
   case 'LITECOIN': return 'LTC';
   case 'REDDCOINS':
   case 'REDDCOIN': return 'RDD';
+  case 'NXTCOIN':  return 'NXT';
   case '子犬':     return 'KOINU';
   default:         return sym.toUpperCase();
   }
