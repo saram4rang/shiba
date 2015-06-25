@@ -1,5 +1,6 @@
 'use strict';
 
+const _            =  require('lodash');
 const co           =  require('co');
 const debug        =  require('debug')('shiba');
 const debugblock   =  require('debug')('shiba:blocknotify');
@@ -158,7 +159,7 @@ Shiba.prototype.onSay = function*(msg) {
   // Everything checked out fine so far. Continue with the command
   // processing phase.
   let cmdMatch = msg.message.match(cmdReg);
-  if (cmdMatch) yield* this.onCmd(msg, cmdMatch[1], cmdMatch[2]);
+  if (cmdMatch) yield* this.onCmd(msg, cmdMatch[1], _.trim(cmdMatch[2]));
 };
 
 Shiba.prototype.checkCmdRate = function*(msg) {
@@ -281,7 +282,6 @@ Shiba.prototype.onCmdCustom = function*(msg, rest) {
 
 Shiba.prototype.onCmdLick = function*(msg, user) {
   user = user.toLowerCase();
-  user = user.replace(/^\s+|\s+$/g,'');
 
   // We're cultivated and don't lick ourselves.
   if (user === this.client.username.toLowerCase()) return;
@@ -315,7 +315,7 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
 };
 
 Shiba.prototype.onCmdSeen = function*(msg, user) {
-  user = user.toLowerCase().replace(/^\s+|\s+$/g,'');
+  user = user.toLowerCase();
 
   // Make sure the username is valid
   if (Lib.isInvalidUsername(user)) {
