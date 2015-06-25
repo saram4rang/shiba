@@ -31,7 +31,7 @@ Bust.prototype.handle = function*(client, msg, input) {
 
   // Assume that we have never seen this crashpoint.
   if(res.length === 0) {
-    client.doSay('wow. such absence. never seen ' + input);
+    client.doSay('wow. such absence. never seen ' + (qry.text || input));
     return;
   }
 

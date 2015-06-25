@@ -26,7 +26,9 @@ Prob.prototype.handle = function*(client, msg, input) {
     res -= Lib.winProb(qry.max ? qry.max+1 : 100);
   res *= 100;
 
-  let line = 'Probability of ' + input + ': ' + res.toFixed(6) + '%';
+  let line =
+    'Probability of ' + (qry.text || input) +
+    ': ' + res.toFixed(6) + '%';
   client.doSay(line);
 };
 

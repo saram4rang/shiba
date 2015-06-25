@@ -4,6 +4,11 @@
    can't be bothered to transform it, so you need to tell jison to
    create a LR(1) parser via "jison -p lr".
 */
+
+%{
+const _ = require('lodash');
+%}
+
 %lex
 %options flex case-insensitive
 
@@ -22,9 +27,9 @@ CRASHm ({CP}|{INST})"m""x"?
 {CRASHk}     return 'CRASHk';
 {CRASHm}     return 'CRASHm';
 "<"          return 'LT';
-"<="         return 'LTE';
+"<="|"≤"     return 'LTE';
 ">"          return 'GT';
-">="         return 'GTE';
+">="|"≥"     return 'GTE';
 "=="|"="     return 'EQ';
 "MAX"        return 'MAX';
 "-"          return 'MINUS';
@@ -47,13 +52,13 @@ crash
   ;
 
 command
-  : crash                  ->  { min: $1, max: $1 }
+  : crash                  ->  { min: $1,          text: "≥" + _.trim(yytext) }
   | MAX                    ->  'MAX'
-  | EQ crash               ->  { min: $2, max: $2 }
-  | LT crash               ->  { max: $2 - 1 }
-  | LTE crash              ->  { max: $2     }
-  | GT crash               ->  { min: $2 + 1 }
-  | GTE crash              ->  { min: $2     }
+  | EQ crash               ->  { min: $2, max: $2, text: "=" + _.trim(yytext) }
+  | LT crash               ->  { max: $2 - 1,      text: "<" + _.trim(yytext) }
+  | LTE crash              ->  { max: $2,          text: "≤" + _.trim(yytext) }
+  | GT crash               ->  { min: $2 + 1,      text: ">" + _.trim(yytext) }
+  | GTE crash              ->  { min: $2,          text: "≥" + _.trim(yytext) }
   | X LT crash             ->  { max: $3 - 1 }
   | X LTE crash            ->  { max: $3     }
   | X GT crash             ->  { min: $3 + 1 }
