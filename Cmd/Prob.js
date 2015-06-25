@@ -21,7 +21,7 @@ Prob.prototype.handle = function*(client, msg, input) {
 
   let res = 1;
   if (qry.hasOwnProperty('min') && qry.min > 0)
-    res = Lib.winProb(qry.min);
+    res = Lib.winProb(Math.max(qry.min,100));
   if (qry.hasOwnProperty('max'))
     res -= Lib.winProb(qry.max ? qry.max+1 : 100);
   res *= 100;
