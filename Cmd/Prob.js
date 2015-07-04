@@ -20,10 +20,24 @@ Prob.prototype.handle = function*(client, msg, input) {
   debug('Prob parse result: ' + JSON.stringify(qry));
 
   let res = 1;
-  if (qry.hasOwnProperty('min') && qry.min > 0)
-    res = Lib.winProb(Math.max(qry.min,100));
-  if (qry.hasOwnProperty('max'))
-    res -= Lib.winProb(qry.max ? qry.max+1 : 100);
+  /* The winProb function gives us the probability for ≥. We combine
+   * the probabilities of the lower and upper bound.
+   **/
+  if (qry.hasOwnProperty('min')) {
+    if (qry.min > 0)
+      // Make sure to handle gap between 0x and 1x is handled correctly.
+      res = Lib.winProb(Math.max(qry.min,100));
+  }
+
+  /* Subtract the probability of the upper bound. This has a corner
+   * case: The parser allows as input <0.
+   */
+  if (qry.hasOwnProperty('max')) {
+    if (qry.max < 0)
+      res = 0;
+    else
+      res -= Lib.winProb(qry.max ? qry.max+1 : 100);
+  }
   res *= 100;
 
   let line =
