@@ -10,6 +10,7 @@ const _ = require('lodash');
 %}
 
 %lex
+/* flex means longest-match semantics */
 %options flex case-insensitive
 
 CP     [1-9][0-9,]*(\.[0-9]?[0-9]?)?

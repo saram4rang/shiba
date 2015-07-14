@@ -368,3 +368,21 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER userstats_trigger
 AFTER INSERT OR UPDATE OR DELETE ON plays
     FOR EACH ROW EXECUTE PROCEDURE userstats_trigger();
+
+CREATE OR REPLACE FUNCTION userIdOf(text) RETURNS bigint AS $$
+  SELECT id FROM users WHERE lower(username) = lower($1)
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE VIEW plays_view AS
+  SELECT
+    game_id,
+    g.game_crash,
+    g.created,
+    username,
+    user_id,
+    bet,
+    cash_out,
+    bonus,
+    COALESCE(cash_out,0) - bet + COALESCE(bonus,0) AS profit,
+    100*cash_out/bet AS factor
+FROM games g JOIN plays ON g.id = plays.game_id JOIN users ON user_id = users.id;

@@ -5,6 +5,7 @@
    create a LR(1) parser via "jison -p lr".
 */
 %lex
+/* flex means longest-match semantics */
 %options flex case-insensitive
 
 INT    [1-9][0-9]*

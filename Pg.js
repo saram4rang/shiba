@@ -622,3 +622,33 @@ exports.getMaxStreak = function*(op, bound) {
 
   return data.rows;
 };
+
+exports.getTimeProfit = function*(username, time) {
+  let sql =
+    'SELECT' +
+    '  COALESCE(SUM(profit),0) profit' +
+    '  FROM plays_view' +
+    '  WHERE user_id = userIdOf($1) AND' +
+    '        created >= $2';
+
+  let par = [username, new Date(Date.now() - 1000*time)];
+  let data = yield* query(sql, par);
+
+  console.log(data.rows);
+  return data.rows[0].profit;
+};
+
+exports.getGamesProfit = function*(username, games) {
+  let sql =
+    'WITH' +
+    '  t AS (SELECT * FROM plays_view' +
+    '        WHERE user_id = userIdOf($1)' +
+    '        ORDER BY game_id' +
+    '        DESC LIMIT $2)' +
+    '  SELECT COALESCE(SUM(profit),0) profit FROM t';
+  let par = [username, games];
+  let data = yield* query(sql, par);
+
+  console.log(data.rows);
+  return data.rows[0].profit;
+};
