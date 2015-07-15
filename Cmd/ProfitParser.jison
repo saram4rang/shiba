@@ -48,7 +48,7 @@ timesecond
   ;
 timeminute
   : MINUTE timesecond -> parseInt(yytext)*60 + $1
-  | MINUTE -> parseInt(yytext)
+  | MINUTE -> parseInt(yytext)*60
   | timesecond -> $1
   ;
 timehour
@@ -69,7 +69,7 @@ timeweek
 
 /* As a summary the two query options. */
 timeago
-  : timeweek -> $1
+  : timeweek -> $1 * 1000 /* convert to milliseconds here */
   ;
 games
   : GAMES -> parseInt($1)

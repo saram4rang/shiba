@@ -83,13 +83,16 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 
 var $0 = $$.length - 1;
 switch (yystate) {
-case 1: case 3:
+case 1:
 this.$ = parseInt(yytext);
 break;
 case 2:
 this.$ = parseInt(yytext)*60 + $$[$0-1];
 break;
-case 4: case 7: case 10: case 13: case 14:
+case 3:
+this.$ = parseInt(yytext)*60;
+break;
+case 4: case 7: case 10: case 13:
 this.$ = $$[$0];
 break;
 case 5:
@@ -109,6 +112,9 @@ this.$ = parseInt(yytext)*7*24*60*60 + $$[$0-1];
 break;
 case 12:
 this.$ = parseInt(yytext)*7*24*60*60;
+break;
+case 14:
+this.$ = $$[$0] * 1000 /* convert to milliseconds here */;
 break;
 case 15:
 this.$ = parseInt($$[$0]);

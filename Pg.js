@@ -660,7 +660,7 @@ exports.getSiteProfitTime = function*(time) {
     '  FROM plays_view' +
     '  WHERE created >= $1';
 
-  let par = [new Date(Date.now() - 1000*time)];
+  let par = [new Date(Date.now() - time)];
   let data = yield* query(sql, par);
 
   return data.rows[0].profit;
