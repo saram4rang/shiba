@@ -21,11 +21,19 @@ Profit.prototype.handle = function*(client, msg, rawInput) {
   }
 
   let username = input.user ? input.user : msg.username;
-  let result;
-  if (input.time) {
-    result = yield* Pg.getTimeProfit(username, input.time);
+  let result, prefix;
+  if (username === 'Ryan') {
+    if (input.time) {
+      result = yield* Pg.getSiteProfitTime(input.time);
+    } else {
+      result = yield* Pg.getSiteProfitGames(input.games);
+    }
   } else {
-    result = yield* Pg.getGamesProfit(username, input.games);
+    if (input.time) {
+      result = yield* Pg.getProfitTime(username, input.time);
+    } else {
+      result = yield* Pg.getProfitGames(username, input.games);
+    }
   }
 
   let response = (result/100).toFixed(2) + ' bits';

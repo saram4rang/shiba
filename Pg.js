@@ -623,7 +623,7 @@ exports.getMaxStreak = function*(op, bound) {
   return data.rows;
 };
 
-exports.getTimeProfit = function*(username, time) {
+exports.getProfitTime = function*(username, time) {
   let sql =
     'SELECT' +
     '  COALESCE(SUM(profit),0) profit' +
@@ -631,14 +631,13 @@ exports.getTimeProfit = function*(username, time) {
     '  WHERE user_id = userIdOf($1) AND' +
     '        created >= $2';
 
-  let par = [username, new Date(Date.now() - 1000*time)];
+  let par = [username, new Date(Date.now() - time)];
   let data = yield* query(sql, par);
 
-  console.log(data.rows);
   return data.rows[0].profit;
 };
 
-exports.getGamesProfit = function*(username, games) {
+exports.getProfitGames = function*(username, games) {
   let sql =
     'WITH' +
     '  t AS (SELECT * FROM plays_view' +
@@ -649,6 +648,30 @@ exports.getGamesProfit = function*(username, games) {
   let par = [username, games];
   let data = yield* query(sql, par);
 
-  console.log(data.rows);
+  return data.rows[0].profit;
+};
+
+exports.getSiteProfitTime = function*(time) {
+  let sql =
+    'SELECT' +
+    '  -COALESCE(SUM(profit),0) profit' +
+    '  FROM plays_view' +
+    '  WHERE created >= $1';
+
+  let par = [new Date(Date.now() - 1000*time)];
+  let data = yield* query(sql, par);
+
+  return data.rows[0].profit;
+};
+
+exports.getSiteProfitGames = function*(games) {
+  let sql =
+    'SELECT' +
+    '  -COALESCE(SUM(profit),0) profit' +
+    '  FROM plays_view' +
+    '  WHERE game_id >= (SELECT MAX(id) FROM games) - $1';
+  let par = [games];
+  let data = yield* query(sql, par);
+
   return data.rows[0].profit;
 };
