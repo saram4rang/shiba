@@ -377,6 +377,7 @@ Client.prototype.onGameCrash = function(data) {
 };
 
 Client.prototype.onPlayerBet = function(data) {
+  data.joined = new Date();
   this.game.players[data.username] = data;
 
   if (this.username === data.username) {
@@ -549,6 +550,7 @@ Client.prototype.getGameInfo = function() {
       player_info:      this.game.players,
       state:            this.game.state,
       ticks:            this.game.ticks,
+      started:          this.game.startTime,
       micro_time:       this.game.microStartTime
     };
 

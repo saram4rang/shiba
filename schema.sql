@@ -86,7 +86,8 @@ CREATE TABLE games (
   id bigint NOT NULL,
   game_crash bigint NOT NULL,
   seed text,
-  created timestamp with time zone DEFAULT now() NOT NULL
+  created timestamp with time zone DEFAULT now() NOT NULL,
+  started timestamp with time zone NULL
 );
 CREATE SEQUENCE games_id_seq
   START WITH 1
@@ -102,7 +103,8 @@ CREATE TABLE plays (
   cash_out bigint,
   game_id bigint NOT NULL,
   bet bigint NOT NULL,
-  bonus bigint
+  bonus bigint,
+  joined timestamp with time zone NULL
 );
 CREATE SEQUENCE plays_id_seq
   START WITH 1

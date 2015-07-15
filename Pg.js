@@ -326,12 +326,13 @@ exports.putGame = function*(info) {
 
     let sql =
       'INSERT INTO ' +
-      'games(id, game_crash, seed) ' +
-      'VALUES ($1, $2, $3)';
+      'games(id, game_crash, seed, started) ' +
+      'VALUES ($1, $2, $3, $4)';
     let par =
       [ info.game_id,
         info.game_crash,
-        info.server_seed || info.hash
+        info.server_seed || info.hash,
+        info.started || null
       ];
     yield* query(sql, par);
 
@@ -341,14 +342,15 @@ exports.putGame = function*(info) {
       let play = info.player_info[player];
       let sql =
         'INSERT INTO ' +
-        'plays(user_id, cash_out, game_id, bet, bonus) ' +
-        'VALUES ($1, $2, $3, $4, $5)';
+        'plays(user_id, cash_out, game_id, bet, bonus, joined) ' +
+        'VALUES ($1, $2, $3, $4, $5, $6)';
       let par =
         [ userIds[player],
           play.stopped_at ? Math.round(play.bet * play.stopped_at / 100) : null,
           info.game_id,
           play.bet,
-          play.bonus || null
+          play.bonus || null,
+          play.joined || null
         ];
 
       try {
