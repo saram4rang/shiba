@@ -28,7 +28,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
     result /= modFactor(conv.tomod);
   } catch(err) {
     client.doSay('wow. such exchange rate fail');
-    console.error(err.stack);
+    console.error(err.stack);//TODO: Already throwing the error in the next line
     throw err;
   }
 
