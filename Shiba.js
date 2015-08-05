@@ -111,7 +111,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
   // Match entire message against the regular expressions.
   let automutes = this.automuteStore.get();
   if (automutes.find(r => msg.message.match(r))) {
-    this.webClient.doMute(msg.username, '36h');
+    this.webClient.doMute(msg.username, '3h');
     return true;
   }
 
@@ -138,7 +138,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
     let r = automutes.find(r => url.match(r));
     if (r) {
       debugautomute('URL matched ' + r);
-      this.webClient.doMute(msg.username, '72h');
+      this.webClient.doMute(msg.username, '6h');
       return true;
     }
   }

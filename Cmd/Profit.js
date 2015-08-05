@@ -22,7 +22,7 @@ Profit.prototype.handle = function*(client, msg, rawInput) {
 
   let username = input.user ? input.user : msg.username;
   let result, prefix;
-  if (username === 'Ryan') {
+  if (username.toLowerCase() === 'Ryan'.toLowerCase()) {
     if (input.time) {
       result = yield* Pg.getSiteProfitTime(input.time);
     } else {
