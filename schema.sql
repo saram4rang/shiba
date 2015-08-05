@@ -38,7 +38,9 @@ CREATE TABLE chats (
   id bigint NOT NULL,
   user_id bigint NOT NULL,
   message text NOT NULL,
-  created timestamp with time zone DEFAULT now() NOT NULL
+  created timestamp with time zone DEFAULT now() NOT NULL,
+  is_bot boolean NOT NULL,
+  channel text NOT NULL
 );
 CREATE SEQUENCE chats_id_seq
   START WITH 1
@@ -314,11 +316,12 @@ ALTER TABLE ONLY blocks
   PRIMARY KEY (height, hash);
 
 CREATE TABLE blocknotifications (
-  username text NOT NULL
+  username text NOT NULL,
+  channel_name text NOT NULL
 );
-ALTER TABLE ONLY blocknotifications
+ALTER TABLE blocknotifications
   ADD CONSTRAINT bv_blocknotifications_pkey
-  PRIMARY KEY (username);
+  PRIMARY KEY (username, channel_name)
 
 CREATE OR REPLACE FUNCTION userstats_trigger()
   RETURNS trigger AS $$

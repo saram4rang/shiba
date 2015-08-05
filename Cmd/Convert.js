@@ -14,7 +14,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
     conv = conv.replace(/^\s+|\s+$/g,'');
     conv = ConvertParser.parse(conv);
   } catch(err) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName);
     throw err;
   }
 
@@ -27,8 +27,8 @@ Convert.prototype.handle = function*(client, msg, conv) {
     result *= modFactor(conv.frommod);
     result /= modFactor(conv.tomod);
   } catch(err) {
-    client.doSay('wow. such exchange rate fail');
-    console.error(err.stack);
+    client.doSay('wow. such exchange rate fail', msg.channelName);
+    //console.error(err.stack);//TODO: Already throwing the error in the next line
     throw err;
   }
 
@@ -66,7 +66,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
   const prettyResult = pretty(conv.toiso, result, conv.tomod);
 
   /* Send everything to the chat. */
-  client.doSay(prettySource + " is " + prettyResult);
+  client.doSay(prettySource + " is " + prettyResult, msg.channelName);
 };
 
 /* Pretty print an amount. We try to make it as pretty as

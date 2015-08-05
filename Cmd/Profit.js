@@ -16,7 +16,7 @@ Profit.prototype.handle = function*(client, msg, rawInput) {
   try {
     input = ProfitParser.parse(rawInput.replace(/^\s+|\s+$/g,''));
   } catch(err) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName);
     throw err;
   }
 
@@ -37,7 +37,7 @@ Profit.prototype.handle = function*(client, msg, rawInput) {
   }
 
   let response = (result/100).toFixed(2) + ' bits';
-  client.doSay(response);
+  client.doSay(response, msg.channelName);
 };
 
 module.exports = exports = Profit;

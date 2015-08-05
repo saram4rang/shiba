@@ -18,7 +18,7 @@ Streak.prototype.handle = function*(client, msg, input) {
   try {
     streak = StreakParser.parse(input.replace(/^\s+|\s+$/g,''));
   } catch(err) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName);
     throw err;
   }
 
@@ -28,12 +28,12 @@ Streak.prototype.handle = function*(client, msg, input) {
       yield* Pg.getLastStreak(streak.count, streak.op, streak.bound) :
       yield* Pg.getMaxStreak(streak.op, streak.bound);
   } catch(err) {
-    client.doSay('wow. such database fail');
+    client.doSay('wow. such database fail', msg.channelName);
     throw err;
   }
 
   if (result.length === 0) {
-    client.doSay('never seen such streak');
+    client.doSay('never seen such streak', msg.channelName);
     return;
   }
 
@@ -51,7 +51,7 @@ Streak.prototype.handle = function*(client, msg, input) {
   if (numGames > MAX_NUM_GAMES)
     response += ', ...';
 
-  client.doSay(response);
+  client.doSay(response, msg.channelName);
 };
 
 module.exports = exports = Streak;

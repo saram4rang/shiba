@@ -10,7 +10,7 @@ const SocketIO     =  require('socket.io-client');
 const debug        =  require('debug')('shiba:client');
 const debuggame    =  require('debug')('shiba:game');
 const debuguser    =  require('debug')('shiba:user');
-const debugchat    =  require('debug')('shiba:chat');
+//const debugchat    =  require('debug')('shiba:chat');
 const debugtick    =  require('debug')('verbose:tick');
 
 const Lib          =  require('./Lib');
@@ -83,7 +83,7 @@ function Client(config) {
   this.socket.on('game_crash', this.onGameCrash.bind(this));
   this.socket.on('player_bet', this.onPlayerBet.bind(this));
   this.socket.on('cashed_out', this.onCashedOut.bind(this));
-  this.socket.on('msg', this.onMsg.bind(this));
+  //this.socket.on('msg', this.onMsg.bind(this));
 }
 
 inherits(Client, EventEmitter);
@@ -417,10 +417,10 @@ Client.prototype.onCashedOut = function(data) {
   }
 };
 
-Client.prototype.onMsg = function(msg) {
-  debugchat('Msg: %s', JSON.stringify(msg));
-  this.emit('msg', msg);
-};
+//Client.prototype.onMsg = function(msg) {
+//  debugchat('Msg: %s', JSON.stringify(msg));
+//  this.emit('msg', msg);
+//};
 
 Client.prototype.doBet = function(amount, autoCashout) {
   debuguser('Bet: %d @%d', amount, autoCashout);
@@ -457,17 +457,17 @@ Client.prototype.doSetAutoCashout = function(at) {
   this.socket.emit('set_auto_cash_out', at);
 };
 
-Client.prototype.doSay = function(line) {
-  debugchat('Saying: %s', line);
-  this.socket.emit('say', line);
-};
+//Client.prototype.doSay = function(line) {
+//  debugchat('Saying: %s', line);
+//  this.socket.emit('say', line);
+//};
 
-Client.prototype.doMute = function(user, timespec) {
-  debugchat('Muting user: %s time: %s', user, timespec);
-  let line = '/mute ' + user;
-  if (timespec) line = line + ' ' + timespec;
-  this.socket.emit('say', line);
-};
+//Client.prototype.doMute = function(user, timespec) {
+//  debugchat('Muting user: %s time: %s', user, timespec);
+//  let line = '/mute ' + user;
+//  if (timespec) line = line + ' ' + timespec;
+//  this.socket.emit('say', line);
+//};
 
 Client.prototype.getLastTick = function() {
   if (this.game.ticks.length > 0)

@@ -14,7 +14,7 @@ Bust.prototype.handle = function*(client, msg, input) {
   try {
     qry = BustParser.parse(input);
   } catch(err) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName);
     return;
   }
 
@@ -25,13 +25,13 @@ Bust.prototype.handle = function*(client, msg, input) {
     res = yield* Pg.getBust(qry);
   } catch(err) {
     console.error('[ERROR] onCmdBust', err.stack);
-    client.doSay('wow. such database fail');
+    client.doSay('wow. such database fail', msg.channelName);
     return;
   }
 
   // Assume that we have never seen this crashpoint.
   if(res.length === 0) {
-    client.doSay('wow. such absence. never seen ' + (qry.text || input));
+    client.doSay('wow. such absence. never seen ' + (qry.text || input), msg.channelName);
     return;
   }
 
@@ -45,7 +45,7 @@ Bust.prototype.handle = function*(client, msg, input) {
     '. ' + (info.game_id - res.id) +
     ' games ago (' + Lib.formatTimeDiff(diff) +
     ')';
-  client.doSay(line);
+  client.doSay(line, msg.channelName);
 };
 
 module.exports = exports = Bust;
