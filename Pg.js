@@ -243,17 +243,17 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
 exports.putMsg = function*(msg) {
   switch(msg.type) {
   case 'say':
-    yield* this.putChat(msg.username, msg.message, new Date(msg.time));
+    yield* this.putChat(msg.username, msg.message, new Date(msg.date));
     break;
   case 'mute':
     yield* this.putMute(
       msg.username, msg.moderator, msg.timespec,
-      msg.shadow, new Date(msg.time));
+      msg.shadow, new Date(msg.date));
     break;
   case 'unmute':
     yield* this.putUnmute(
       msg.username, msg.moderator, msg.shadow,
-      new Date(msg.time));
+      new Date(msg.date));
     break;
   case 'error':
   case 'info':
@@ -268,17 +268,17 @@ exports.getLastMessages = function*() {
 
   let sql1 =
     "SELECT\
-       chats.created AS time,\
+       chats.created AS date,\
        'say' AS type,\
        username,\
        message\
      FROM chats\
      JOIN users ON chats.user_id = users.id\
-     ORDER BY time DESC\
+     ORDER BY date DESC\
      LIMIT $1";
   let sql2 =
     "SELECT\
-       mutes.created AS time,\
+       mutes.created AS date,\
        'mute' AS type,\
        m.username AS moderator,\
        u.username,\
@@ -287,11 +287,11 @@ exports.getLastMessages = function*() {
      FROM mutes\
      JOIN users AS m ON mutes.moderator_id = m.id\
      JOIN users AS u ON mutes.user_id = u.id\
-     ORDER BY time DESC\
+     ORDER BY date DESC\
      LIMIT $1";
   let sql3 =
     "SELECT\
-       unmutes.created AS time,\
+       unmutes.created AS date,\
        'unmute' AS type,\
        m.username AS moderator,\
        u.username,\
@@ -299,13 +299,13 @@ exports.getLastMessages = function*() {
      FROM unmutes\
      JOIN users AS m ON unmutes.moderator_id = m.id\
      JOIN users AS u ON unmutes.user_id = u.id\
-     ORDER BY time DESC\
+     ORDER BY date DESC\
      LIMIT $1";
   let par = [Config.CHAT_HISTORY];
 
   let res = yield [sql1,sql2,sql3].map((sql) => query(sql,par));
   res = res[0].rows.concat(res[1].rows,res[2].rows);
-  res = res.sort((a,b) => new Date(a.time) - new Date(b.time));
+  res = res.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   return res;
 };

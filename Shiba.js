@@ -60,13 +60,23 @@ function Shiba() {
     // Connect to the web server.
     self.webClient = new WebClient(Config);
 
-    // Setup the chat bindings.
+    // Setup the game bindings.
     self.client.on('join', co.wrap(function*(data) {
       let games = data.table_history.sort((a,b) => a.game_id - b.game_id);
-      yield [ self.chatStore.mergeMessages(data.chat),
-              self.gameStore.mergeGames(games)
-            ];
+      yield* self.gameStore.mergeGames(games);
     }));
+    self.client.on('game_crash', co.wrap(function*(data, gameInfo) {
+      yield* self.gameStore.addGame(gameInfo);
+    }));
+
+    // Setup the chat bindings.
+    self.webClient.on('join', function(data) {
+      co(function*(){
+        yield* self.chatStore.mergeMessages(data.history);
+      }).catch(function(err) {
+        console.error('Error importing history:', err);
+      });
+    });
     self.webClient.on('msg', function(msg) {
       co(function*(){
         yield* self.chatStore.addMessage(msg);
@@ -74,9 +84,6 @@ function Shiba() {
           yield* self.onSay(msg);
       }).catch(err => console.error('[ERROR] onMsg:', err.stack));
     });
-    self.client.on('game_crash', co.wrap(function*(data, gameInfo) {
-      yield* self.gameStore.addGame(gameInfo);
-    }));
 
     self.cmdBlock.setClient(self.webClient);
 

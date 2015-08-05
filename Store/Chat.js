@@ -25,8 +25,8 @@ function eqMsg(a,b) {
     a.moderator == b.moderator &&
     a.type      == b.type      &&
     a.username  == b.username  &&
-    new Date(a.time).getTime() ==
-    new Date(b.time).getTime();
+    new Date(a.date).getTime() ==
+    new Date(b.date).getTime();
   return res;
 }
 

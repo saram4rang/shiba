@@ -50,8 +50,9 @@ WebClient.prototype.onConnect = function(data) {
 };
 
 //{ history: [], username: 'username', channel: 'channel' }
-WebClient.prototype.onJoin = function(data) { //Ignoring the chat history
+WebClient.prototype.onJoin = function(data) {
     console.log('Chat joined to the channel: ', data.channel);
+    this.emit('join', data);
 };
 
 WebClient.prototype.doSay = function(line, channelName) {

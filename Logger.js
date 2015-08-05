@@ -3,7 +3,8 @@
 const co     =  require('co');
 const fs     =  require('fs');
 
-const Client =  require('./Client');
+const Client =  require('./GameClient');
+const WebClient =  require('./WebClient');
 const Lib    =  require('./Lib');
 const Pg     =  require('./Pg');
 const Config =  require('./Config');
@@ -26,17 +27,25 @@ co(function*(){
 
   // Connect to the site
   let client = new Client(Config);
+  let webClient = new WebClient(Config);
 
   client.on('join', co.wrap(function*(data) {
     let games = data.table_history.sort((a,b) => a.game_id - b.game_id);
-    yield [ chatStore.mergeMessages(data.chat),
-            gameStore.mergeGames(games)
-          ];
+    yield* gameStore.mergeGames(games);
   }));
-  client.on('msg', co.wrap(chatStore.addMessage.bind(chatStore)));
   client.on('game_crash', co.wrap(function*(data, gameInfo) {
     yield* gameStore.addGame(gameInfo);
   }));
+
+  webClient.on('join', function(data) {
+    co(function*(){
+      yield* chatStore.mergeMessages(data.history);
+    }).catch(function(err) {
+      console.error('Error importing history:', err);
+    });
+  });
+  webClient.on('msg', co.wrap(chatStore.addMessage.bind(chatStore)));
+
 
   // Setup chatlog file writer
   let chatDate    = null;
@@ -60,4 +69,8 @@ co(function*(){
     }
     chatStream.write(JSON.stringify(msg) + '\n');
   });
+}).catch(function(err) {
+  // Abort immediately when an exception is thrown on startup.
+  console.error(err.stack);
+  throw err;
 });
