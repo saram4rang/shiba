@@ -17,7 +17,7 @@ pg.types.setTypeParser(20, function(val) { // parse int8 as an integer
 });
 
 let querySeq = 0;
-function *query(sql, params) {
+function *query(  sql, params) {
   let qid = querySeq++;
   debugpg("[%d] Executing query '%s'", qid, sql);
   if (params) debugpg("[%d] Parameters %s", qid, JSON.stringify(params));
@@ -188,7 +188,7 @@ CREATE TABLE chats (
   created timestamp with time zone DEFAULT now() NOT NULL
 );
 */
-exports.putChat = function*(username, message, timestamp) {
+exports.putChat = function*(username, message, timestamp, isBot, channelName) {
   debug('Recording chat message. User: ' + username);
   let user = yield* getUser(username);
 
@@ -528,17 +528,25 @@ exports.putBlock = function*(block) {
 
 exports.getBlockNotifications = function*() {
   debug('Getting block notification list');
-  let sql  = 'SELECT * FROM blocknotifications';
+  //let sql  = 'SELECT * FROM blocknotifications';
+  let sql = 'SELECT channel_name, array_agg(username) AS users FROM blocknotifications GROUP BY channel_name';
+
   let par  = [];
   let data = yield* query(sql, par);
 
-  return data.rows.map(row => row.username);
+  let map = new Map();
+  data.rows.forEach(function(val, index) {
+    map.set(val['channel_name'], val['users']);
+  });
+  return map;
+
+  //return data.rows.map(row => row.username);
 };
 
-exports.putBlockNotification = function*(username) {
-  debug('Adding %s to block notification list', username);
-  let sql = 'INSERT INTO blocknotifications(username) VALUES($1)';
-  let par = [username];
+exports.putBlockNotification = function*(username, channelName) {
+  debug('Adding %s to block notification list on channel %s', username, channelName);
+  let sql = 'INSERT INTO blocknotifications(username, channel_name) VALUES($1, $2)';
+  let par = [username, channelName];
 
   try {
     yield* query(sql, par);

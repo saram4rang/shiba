@@ -16,18 +16,18 @@ Automute.prototype.handle = function*(client, msg, input) {
     let match = input.match(/^\/(.*)\/([gi]*)$/);
     regex = new RegExp(match[1], match[2]);
   } catch(err) {
-    client.doSay('regex compile file: ' + err.message);
+    client.doSay('regex compile file: ' + err.message, msg.channelName);
     return;
   }
 
   try {
     yield* this.store.add(msg.username, regex);
   } catch(err) {
-    client.doSay('failed adding automute to database.');
+    client.doSay('failed adding automute to database.', msg.channelName);
     return;
   }
 
-  client.doSay('wow. so cool. very obedient');
+  client.doSay('wow. so cool. very obedient', msg.channelName);
 };
 
 module.exports = exports = Automute;

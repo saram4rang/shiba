@@ -25,9 +25,13 @@ function WebClient(config) {
 
 inherits(WebClient, EventEmitter);
 
-WebClient.prototype.onMsg = function(msg) {
+WebClient.prototype.onMsg = function(msg, channelName) {
     debugchat('Msg: %s', JSON.stringify(msg));
-    this.emit('msg', msg);
+
+    if(!msg.channelName)
+        console.log('Received mesage with no channel');
+
+    this.emit('msg', msg, channelName);
 };
 
 WebClient.prototype.onError = function(err) {
@@ -42,17 +46,17 @@ WebClient.prototype.onConnect = function(data) {
     debug("Web Server Connected.");
 
     //self.emit('webclient-connect');
-    this.socket.emit('join', 'bots'); //the channel does not matter for the bots because they are broadcasted
+    this.socket.emit('join', 'all');
 };
 
 //{ history: [], username: 'username', channel: 'channel' }
 WebClient.prototype.onJoin = function(data) { //Ignoring the chat history
-    console.log('chat joined to the channel: ', data.channel);
+    console.log('Chat joined to the channel: ', data.channel);
 };
 
-WebClient.prototype.doSay = function(line) {
+WebClient.prototype.doSay = function(line, channelName) {
     debugchat('Saying: %s', line);
-    this.socket.emit('say', line, true);
+    this.socket.emit('say', line, true, channelName);
 };
 
 WebClient.prototype.onDisconnect = function(data) {

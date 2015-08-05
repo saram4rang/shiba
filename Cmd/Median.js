@@ -32,7 +32,7 @@ Median.prototype.handle = function*(client, msg, input) {
 
   let nums = parse(input);
   if (nums.length <= 0) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName);
     return;
   }
 
@@ -43,7 +43,7 @@ Median.prototype.handle = function*(client, msg, input) {
   let response = 'Median over last ' +
         nums + ' games: ' + result;
 
-  client.doSay(response);
+  client.doSay(response, msg.channelName);
 };
 
 module.exports = exports = Median;

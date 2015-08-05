@@ -78,7 +78,8 @@ function Shiba() {
       yield* self.gameStore.addGame(gameInfo);
     }));
 
-    self.cmdBlock.setClient(self.client);
+    self.cmdBlock.setClient(self.webClient);
+
     self.setupScamComment();
   }).catch(function(err) {
     // Abort immediately when an exception is thrown on startup.
@@ -94,7 +95,7 @@ Shiba.prototype.setupScamComment = function() {
     console.assert(gameInfo.hasOwnProperty('verified'));
 
     if (gameInfo.verified !== 'ok')
-      self.webClient.doSay('wow. such scam. very hash failure.');
+      self.webClient.doSay('wow. such scam. very hash failure.', 'english');
   });
 };
 
@@ -225,7 +226,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'blck':
   case 'blk':
   case 'bl':
-    yield* this.cmdBlock.handle(this.client, msg, rest);
+    yield* this.cmdBlock.handle(this.webClient, msg, rest);
     break;
   case 'crash':
   case 'cras':
@@ -236,21 +237,21 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'bust':
   case 'bst':
   case 'bt':
-    yield* this.cmdBust.handle(this.client, msg, rest);
+    yield* this.cmdBust.handle(this.webClient, msg, rest);
     break;
   case 'automute':
-    yield* this.cmdAutomute.handle(this.client, msg, rest);
+    yield* this.cmdAutomute.handle(this.webClient, msg, rest);
     break;
   case 'median':
   case 'med':
-    yield* this.cmdMedian.handle(this.client, msg, rest);
+    yield* this.cmdMedian.handle(this.webClient, msg, rest);
     break;
   case 'prob':
   case 'prb':
   case 'pob':
   case 'pb':
   case 'p':
-    yield* this.cmdProb.handle(this.client, msg, rest);
+    yield* this.cmdProb.handle(this.webClient, msg, rest);
     break;
   case 'profit':
   case 'prfit':
@@ -259,10 +260,10 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'prft':
   case 'prf':
   case 'prt':
-    yield* this.cmdProfit.handle(this.client, msg, rest);
+    yield* this.cmdProfit.handle(this.webClient, msg, rest);
     break;
   case 'streak':
-    yield* this.cmdStreak.handle(this.client, msg, rest);
+    yield* this.cmdStreak.handle(this.webClient, msg, rest);
     break;
   }
 };
@@ -270,7 +271,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
 Shiba.prototype.onCmdHelp = function*(msg, rest) {
   this.webClient.doSay(
       'very explanation. much insight: ' +
-      'https://github.com/moneypot/shiba/wiki/');
+      'https://github.com/moneypot/shiba/wiki/', msg.channelName);
 };
 
 Shiba.prototype.onCmdCustom = function*(msg, rest) {
@@ -281,8 +282,8 @@ Shiba.prototype.onCmdCustom = function*(msg, rest) {
   let customMatch = rest.match(customReg);
 
   if (!customMatch) {
-    this.webClient.doSay('wow. very usage failure. such retry');
-    this.webClient.doSay('so example, very cool: !custom Ryan very dog lover');
+    this.webClient.doSay('wow. very usage failure. such retry', msg.channelName);
+    this.webClient.doSay('so example, very cool: !custom Ryan very dog lover', msg.channelName);
     return;
   }
 
@@ -291,10 +292,10 @@ Shiba.prototype.onCmdCustom = function*(msg, rest) {
 
   try {
     yield* Pg.putLick(customUser, customMsg, msg.username);
-    this.webClient.doSay('wow. so cool. very obedient');
+    this.webClient.doSay('wow. so cool. very obedient', msg.channelName);
   } catch(err) {
     console.error('[ERROR] onCmdCustom:', err.stack);
-    this.webClient.doSay('wow. such database fail');
+    this.webClient.doSay('wow. such database fail', msg.channelName);
   }
 };
 
@@ -305,7 +306,7 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
   if (user === this.client.username.toLowerCase()) return;
 
   if (profanity[user]) {
-    this.webClient.doSay('so trollol. very annoying. such mute');
+    this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
     this.webClient.doMute(msg.username, '5m');
     return;
   }
@@ -323,10 +324,10 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
     // standard one.
     let r = Math.random() * (customs.length - 0.8);
     let m = customs[Math.floor(r)];
-    this.webClient.doSay(m);
+    this.webClient.doSay(m, msg.channelName);
   } catch(err) {
     if (err === 'USER_DOES_NOT_EXIST')
-      this.webClient.doSay('very stranger. never seen');
+      this.webClient.doSay('very stranger. never seen', msg.channelName);
     else
       console.error('[ERROR] onCmdLick:', err);
   }
@@ -337,36 +338,36 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 
   // Make sure the username is valid
   if (Lib.isInvalidUsername(user)) {
-    this.webClient.doSay('such name. very invalid');
+    this.webClient.doSay('such name. very invalid', msg.channelName);
     return;
   }
 
   // In case a user asks for himself.
   if (user === msg.username.toLowerCase()) {
-    this.webClient.doSay('go find a mirror @' + msg.username);
+    this.webClient.doSay('go find a mirror @' + msg.username, msg.channelName);
     return;
   }
 
-  // Special treatment of block.
-  if (user === 'block') {
-    yield* this.onCmdBlock(msg);
-    return;
-  }
+  // Special treatment of block.  //TODO: disabling, doesn't work anyway
+  //if (user === 'block') {
+  //  yield* this.onCmdBlock(msg);
+  //  return;
+  //}
 
   // Special treatment of rape.
   if (user === 'rape') {
-    yield* this.cmdBust.handle(this.client, msg, '< 1.05');
+    yield* this.cmdBust.handle(this.webClient, msg, '< 1.05');
     return;
   }
 
   // Somebody asks us when we've seen ourselves.
   if (user === this.client.username.toLowerCase()) {
-    this.webClient.doSay('strange loops. much confusion.');
+    this.webClient.doSay('strange loops. much confusion.', msg.channelName);
     return;
   }
 
   if (profanity[user]) {
-    this.webClient.doSay('so trollol. very annoying. such mute');
+    this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
     this.webClient.doMute(msg.username, '5m');
     return;
   }
@@ -376,17 +377,17 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     message = yield* Pg.getLastSeen(user);
   } catch(err) {
     if (err === 'USER_DOES_NOT_EXIST')
-      this.webClient.doSay('very stranger. never seen');
+      this.webClient.doSay('very stranger. never seen', msg.channelName);
     else {
       console.error('[ERROR] onCmdSeen:', err.stack);
-      this.webClient.doSay('wow. such database fail');
+      this.webClient.doSay('wow. such database fail', msg.channelName);
     }
     return;
   }
 
   if (!message.time) {
     // User exists but hasn't said a word.
-    this.webClient.doSay('very silent. never spoken');
+    this.webClient.doSay('very silent. never spoken', msg.channelName);
     return;
   }
 
@@ -399,37 +400,37 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     line += Lib.formatTimeDiff(diff);
     line += ' ago.';
   }
-  this.webClient.doSay(line);
+  this.webClient.doSay(line, msg.channelName);
 };
 
 Shiba.prototype.onCmdConvert = function*(msg, conv) {
   yield* this.cmdConvert.handle(this.webClient, msg, conv);
 };
 
-Shiba.prototype.onCmdBlock = function*(msg) {
-  let time  = this.block.notification;
-  let diff  = Date.now() - time;
-
-  let line = 'Seen block #' + this.block.height;
-  if (diff < 1000) {
-    line += ' just now.';
-  } else {
-    line += ' ';
-    line += Lib.formatTimeDiff(diff);
-    line += ' ago.';
-  }
-
-  // Add the user to the list of users being notified about a new block.
-  if (this.blockNotifyUsers.indexOf(msg.username) < 0) {
-    debugblock("Adding user '%s' to block notfy list", msg.username);
-    this.blockNotifyUsers.push(msg.username);
-    yield* Pg.putBlockNotification(msg.username);
-  } else {
-    debugblock("User '%s' is already on block notfy list", msg.username);
-    line += ' ' + msg.username + ': Have patience!';
-  }
-
-  this.webClient.doSay(line);
-};
+//Shiba.prototype.onCmdBlock = function*(msg) {
+//  let time  = this.block.notification;
+//  let diff  = Date.now() - time;
+//
+//  let line = 'Seen block #' + this.block.height;
+//  if (diff < 1000) {
+//    line += ' just now.';
+//  } else {
+//    line += ' ';
+//    line += Lib.formatTimeDiff(diff);
+//    line += ' ago.';
+//  }
+//
+//  // Add the user to the list of users being notified about a new block.
+//  if (this.blockNotifyUsers.indexOf(msg.username) < 0) {
+//    debugblock("Adding user '%s' to block notfy list", msg.username);
+//    this.blockNotifyUsers.push(msg.username);
+//    yield* Pg.putBlockNotification(msg.username);
+//  } else {
+//    debugblock("User '%s' is already on block notfy list", msg.username);
+//    line += ' ' + msg.username + ': Have patience!';
+//  }
+//
+//  this.webClient.doSay(line, msg.channelName);
+//};
 
 let shiba = new Shiba();

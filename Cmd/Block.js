@@ -9,7 +9,7 @@ const Lib        = require('../Lib');
 
 function CmdBlock(block, blockNotify) {
   this.block       = block;
-  this.blockNotify = blockNotify;
+  this.blockNotify = blockNotify; //Map 'channelName': ['user1', 'user2', ...]
   this.client      = null;
 
   this.blockchain  = new Blockchain();
@@ -36,11 +36,16 @@ CmdBlock.prototype.onBlock = function(block) {
     if (newBlock.height > self.block.height) {
       self.block = newBlock;
 
-      if (self.client && self.blockNotify.length > 0) {
-        let users = self.blockNotify.map(s => '@'+s).join(', ') + ': ';
-        let line = users + 'Block #' + newBlock.height + ' mined.';
-        self.client.doSay(line);
-        self.blockNotify = [];
+      if (self.client && self.blockNotify.size > 0) {
+
+        for(let channelName of self.blockNotify.keys()) {
+          let userList = self.blockNotify.get(channelName);
+          let users = userList.map(s => '@'+s).join(', ') + ': ';
+          let line = users + 'Block #' + newBlock.height + ' mined.';
+          self.client.doSay(line, channelName);
+          self.blockNotify.clear();
+        }
+
         yield* Pg.clearBlockNotifications();
       }
     }
@@ -63,17 +68,19 @@ CmdBlock.prototype.handle = function*(client, msg, input) {
     line += ' ago.';
   }
 
-  // Add the user to the list of users being notified about a new block.
-  if (this.blockNotify.indexOf(msg.username) < 0) {
-    debugblock("Adding user '%s' to block notfy list", msg.username);
-    this.blockNotify.push(msg.username);
-    yield* Pg.putBlockNotification(msg.username);
+  if(!this.blockNotify.get(msg.channelName)) {
+    debugblock("Creating channel '%s' with user '%s' to block notfy list", msg.channelName, msg.username);
+    this.blockNotify.set(msg.channelName, [ msg.username ]);
+    yield* Pg.putBlockNotification(msg.username, msg.channelName);
+  } else if(this.blockNotify.get(msg.channelName).indexOf(msg.username) < 0) {
+    debugblock("Adding user '%s' to the channel '%s' to block notfy list", msg.username, msg.channelName);
+    this.blockNotify.get(msg.channelName).push(msg.username);
+    yield* Pg.putBlockNotification(msg.username, msg,channelName);
   } else {
-    debugblock("User '%s' is already on block notfy list", msg.username);
-    line += ' ' + msg.username + ': Have patience!';
+    debugblock("User '%s' on channel '%s' is already on block notfy list", msg.username, msg.channelName);
   }
 
-  this.client.doSay(line);
+  this.client.doSay(line, msg.channelName);
 };
 
 function* mkCmdBlock() {

@@ -13,7 +13,7 @@ Prob.prototype.handle = function*(client, msg, input) {
   try {
     qry = BustParser.parse(input);
   } catch(err) {
-    client.doSay('wow. very usage failure. such retry');
+    client.doSay('wow. very usage failure. such retry', msg.channelName); //
     return;
   }
 
@@ -43,7 +43,7 @@ Prob.prototype.handle = function*(client, msg, input) {
   let line =
     'Probability of ' + (qry.text || input) +
     ': ' + res.toFixed(6) + '%';
-  client.doSay(line);
+  client.doSay(line, msg.channelName);
 };
 
 module.exports = exports = Prob;
