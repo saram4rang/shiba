@@ -43,9 +43,9 @@ CmdBlock.prototype.onBlock = function(block) {
           let users = userList.map(s => '@'+s).join(', ') + ': ';
           let line = users + 'Block #' + newBlock.height + ' mined.';
           self.client.doSay(line, channelName);
-          self.blockNotify.clear();
         }
 
+        self.blockNotify.clear();
         yield* Pg.clearBlockNotifications();
       }
     }
@@ -69,15 +69,16 @@ CmdBlock.prototype.handle = function*(client, msg, input) {
   }
 
   if(!this.blockNotify.get(msg.channelName)) {
-    debugblock("Creating channel '%s' with user '%s' to block notfy list", msg.channelName, msg.username);
+    debugblock("Creating channel '%s' with user '%s' to block notify list", msg.channelName, msg.username);
     this.blockNotify.set(msg.channelName, [ msg.username ]);
     yield* Pg.putBlockNotification(msg.username, msg.channelName);
   } else if(this.blockNotify.get(msg.channelName).indexOf(msg.username) < 0) {
-    debugblock("Adding user '%s' to the channel '%s' to block notfy list", msg.username, msg.channelName);
+    debugblock("Adding user '%s' to the channel '%s' to block notify list", msg.username, msg.channelName);
     this.blockNotify.get(msg.channelName).push(msg.username);
     yield* Pg.putBlockNotification(msg.username, msg,channelName);
   } else {
     debugblock("User '%s' on channel '%s' is already on block notfy list", msg.username, msg.channelName);
+    line += ' ' + msg.username + ': Have patience!';
   }
 
   this.client.doSay(line, msg.channelName);

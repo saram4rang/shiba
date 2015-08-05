@@ -17,7 +17,7 @@ pg.types.setTypeParser(20, function(val) { // parse int8 as an integer
 });
 
 let querySeq = 0;
-function *query(  sql, params) {
+function *query(sql, params) {
   let qid = querySeq++;
   debugpg("[%d] Executing query '%s'", qid, sql);
   if (params) debugpg("[%d] Parameters %s", qid, JSON.stringify(params));
@@ -528,7 +528,6 @@ exports.putBlock = function*(block) {
 
 exports.getBlockNotifications = function*() {
   debug('Getting block notification list');
-  //let sql  = 'SELECT * FROM blocknotifications';
   let sql = 'SELECT channel_name, array_agg(username) AS users FROM blocknotifications GROUP BY channel_name';
 
   let par  = [];
@@ -539,8 +538,6 @@ exports.getBlockNotifications = function*() {
     map.set(val['channel_name'], val['users']);
   });
   return map;
-
-  //return data.rows.map(row => row.username);
 };
 
 exports.putBlockNotification = function*(username, channelName) {

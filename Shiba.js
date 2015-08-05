@@ -237,7 +237,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'bust':
   case 'bst':
   case 'bt':
-    yield* this.cmdBust.handle(this.webClient, msg, rest);
+    yield* this.cmdBust.handle(this.webClient, this.client, msg, rest);
     break;
   case 'automute':
     yield* this.cmdAutomute.handle(this.webClient, msg, rest);
@@ -348,15 +348,15 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     return;
   }
 
-  // Special treatment of block.  //TODO: disabling, doesn't work anyway
-  //if (user === 'block') {
-  //  yield* this.onCmdBlock(msg);
-  //  return;
-  //}
+  // Special treatment of block.
+  if (user === 'block') {
+    yield* this.cmdBlock.handle(this.webClient, msg, user);
+    return;
+  }
 
   // Special treatment of rape.
   if (user === 'rape') {
-    yield* this.cmdBust.handle(this.webClient, msg, '< 1.05');
+    yield* this.cmdBust.handle(this.webClient, this.client, msg, '< 1.05');
     return;
   }
 
@@ -406,31 +406,5 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 Shiba.prototype.onCmdConvert = function*(msg, conv) {
   yield* this.cmdConvert.handle(this.webClient, msg, conv);
 };
-
-//Shiba.prototype.onCmdBlock = function*(msg) {
-//  let time  = this.block.notification;
-//  let diff  = Date.now() - time;
-//
-//  let line = 'Seen block #' + this.block.height;
-//  if (diff < 1000) {
-//    line += ' just now.';
-//  } else {
-//    line += ' ';
-//    line += Lib.formatTimeDiff(diff);
-//    line += ' ago.';
-//  }
-//
-//  // Add the user to the list of users being notified about a new block.
-//  if (this.blockNotifyUsers.indexOf(msg.username) < 0) {
-//    debugblock("Adding user '%s' to block notfy list", msg.username);
-//    this.blockNotifyUsers.push(msg.username);
-//    yield* Pg.putBlockNotification(msg.username);
-//  } else {
-//    debugblock("User '%s' is already on block notfy list", msg.username);
-//    line += ' ' + msg.username + ': Have patience!';
-//  }
-//
-//  this.webClient.doSay(line, msg.channelName);
-//};
 
 let shiba = new Shiba();

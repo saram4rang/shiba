@@ -321,7 +321,7 @@ CREATE TABLE blocknotifications (
 );
 ALTER TABLE blocknotifications
   ADD CONSTRAINT bv_blocknotifications_pkey
-  PRIMARY KEY (username, channel_name)
+  PRIMARY KEY (username, channel_name);
 
 CREATE OR REPLACE FUNCTION userstats_trigger()
   RETURNS trigger AS $$
