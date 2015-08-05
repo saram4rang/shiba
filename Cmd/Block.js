@@ -75,7 +75,7 @@ CmdBlock.prototype.handle = function*(client, msg, input) {
   } else if(this.blockNotify.get(msg.channelName).indexOf(msg.username) < 0) {
     debugblock("Adding user '%s' to the channel '%s' to block notify list", msg.username, msg.channelName);
     this.blockNotify.get(msg.channelName).push(msg.username);
-    yield* Pg.putBlockNotification(msg.username, msg,channelName);
+    yield* Pg.putBlockNotification(msg.username, msg.channelName);
   } else {
     debugblock("User '%s' on channel '%s' is already on block notfy list", msg.username, msg.channelName);
     line += ' ' + msg.username + ': Have patience!';
