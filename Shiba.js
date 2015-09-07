@@ -111,7 +111,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
   // Match entire message against the regular expressions.
   let automutes = this.automuteStore.get();
   if (automutes.find(r => msg.message.match(r))) {
-    this.webClient.doMute(msg.username, '3h');
+    this.webClient.doMute(msg.username, '3h', msg.channelName);
     return true;
   }
 
@@ -138,7 +138,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
     let r = automutes.find(r => url.match(r));
     if (r) {
       debugautomute('URL matched ' + r);
-      this.webClient.doMute(msg.username, '6h');
+      this.webClient.doMute(msg.username, '6h', msg.channelName);
       return true;
     }
   }
@@ -160,7 +160,7 @@ Shiba.prototype.checkRate = function*(msg) {
   });
 
   if (rate) {
-    this.webClient.doMute(msg.username, rate.mute);
+    this.webClient.doMute(msg.username, rate.mute, msg.channelName);
     return true;
   }
 
@@ -187,10 +187,10 @@ Shiba.prototype.checkCmdRate = function*(msg) {
   messages.forEach(m => { if (m.message.match(cmdReg)) ++count; });
 
   if (count >= 5) {
-    this.webClient.doMute(msg.username, '5m');
+    this.webClient.doMute(msg.username, '5m', msg.channelName);
     return true;
   } else if (count >= 4) {
-    this.webClient.doSay('bites ' + msg.username);
+    this.webClient.doSay('bites ' + msg.username, msg.channelName);
     return true;
   }
 
@@ -314,7 +314,7 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
 
   if (profanity[user]) {
     this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
-    this.webClient.doMute(msg.username, '5m');
+    this.webClient.doMute(msg.username, '5m', msg.channelName);
     return;
   }
 
@@ -375,7 +375,7 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 
   if (profanity[user]) {
     this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
-    this.webClient.doMute(msg.username, '5m');
+    this.webClient.doMute(msg.username, '5m', msg.channelName);
     return;
   }
 
