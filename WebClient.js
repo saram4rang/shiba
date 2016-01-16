@@ -76,13 +76,29 @@ WebClient.prototype.onDisconnect = function(data) {
     this.emit('disconnect');
 };
 
+// TODO: Move somewhere else.
+const whitelist =
+  [ "ryan"
+  , "rapetor"
+  , "dexon"
+  , "dexonbot"
+  , "shiba"
+  , "steve"
+  , "bitcoininformation"
+  , "kungfuant"
+  ];
+
 WebClient.prototype.doMute = function(user, timespec, channelName) {
-  debugchat('Muting user: %s time: %s', user, timespec);
-  let line = '/mute ' + user;
-  if (timespec) line = line + ' ' + timespec;
-  this.socket.emit('say', line, channelName, true, function(err) {
-      console.log('[chan]: ', channelName)
-      if(err)
-        console.error('[Mute] ', err);
-  });
+  if (whitelist.indexOf(user.toLowerCase()) < 0) {
+      debugchat('Muting user: %s time: %s', user, timespec);
+      let line = '/mute ' + user;
+      if (timespec) line = line + ' ' + timespec;
+      this.socket.emit('say', line, channelName, true, function(err) {
+	  console.log('[chan]: ', channelName)
+	  if(err)
+              console.error('[Mute] ', err);
+      });
+  } else {
+      debugchat('Not muting whitelisted user: %s time: %s', user, timespec);
+  }
 };
