@@ -4,6 +4,7 @@ const EventEmitter = require('events').EventEmitter;
 const inherits     = require('util').inherits;
 const debug        = require('debug')('shiba:store:chat');
 const debugv       = require('debug')('verbose:store:chat');
+const _            = require('lodash');
 const Config       = require('../Config');
 const Pg           = require('../Pg');
 
@@ -31,6 +32,16 @@ function eqMsg(a,b) {
 }
 
 ChatStore.prototype.mergeMessages = function*(msgs) {
+  // Make sure messages are sorted increasingly by time.
+  var t = new Date(0);
+  _.forEach(msgs, function(msg) {
+    console.assert(msg.hasOwnProperty('date'));
+    var d = new Date(msg.date);
+    console.assert(t <= d);
+    t = d;
+  });
+
+
   let self = this;
   let na   = msgs, oa = this.store;
   let m    = [];
@@ -51,17 +62,18 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
 
     if (!(ni < na.length)) {
       // All new messages added, but some old messages are left for
-      // merging. Under normal circumstances this should be
-      // impossible.
+      // merging. Under normal circumstances this should be impossible, but
+      // recently mute messages are not retained by the server and in the future
+      // message might be deleted.
       let msgs = oa.splice(oi);
-      console.error('[ERROR] Stray old messages:', msgs, na, oa);
+      console.warn('[ERROR] Stray old messages:', msgs, na, oa);
       this.store = m.concat(msgs);
       return;
     }
 
     // Extract old and new messages and message times.
-    let om = oa[oi], ot = new Date(om.time);
-    let nm = na[ni], nt = new Date(nm.time);
+    let om = oa[oi], ot = new Date(om.date);
+    let nm = na[ni], nt = new Date(nm.date);
 
     if (ot < nt) {
       debugv('Merge old message: %s', JSON.stringify(om));
@@ -115,7 +127,7 @@ ChatStore.prototype.addMessage = function*(msg) {
 ChatStore.prototype.getChatMessages = function(username, after) {
   let messages = [];
   for (let msg of this.store) {
-    let then = new Date(msg.time);
+    let then = new Date(msg.date);
 
     if (after <= then &&
         msg.type === 'say' &&

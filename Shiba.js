@@ -74,9 +74,9 @@ function Shiba() {
     // Setup the chat bindings.
     self.webClient.on('join', function(data) {
       co(function*(){
-        yield* self.chatStore.mergeMessages(data.history);
+        yield* self.chatStore.mergeMessages(data.history.reverse());
       }).catch(function(err) {
-        console.error('Error importing history:', err);
+        console.error('Error importing history:', err, err.stack);
       });
     });
     self.webClient.on('msg', function(msg) {
