@@ -201,6 +201,17 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   // Cmd rate limiter
   if (yield* this.checkCmdRate(msg)) return;
 
+  var blacklist = [ 'seen', 'sen', 'sn', 's', 'convert', 'conver', 'conv', 'cv', 'c'
+                  , 'crash', 'cras', 'crsh', 'cra', 'cr', 'bust', 'bst', 'bt'
+		  , 'median', 'med', 'prob', 'prb', 'pob', 'pb', 'p', 'profit', 'prfit'
+		  , 'profi', 'prof', 'prft', 'prf', 'prt', 'streak'
+                  ];
+  if (msg.channelName === 'english' &&
+      blacklist.indexOf(cmd.toLowerCase()) >= 0) {
+    this.webClient.doSay('@' + msg.username + ' Please use another channel for that command.', msg.channelName);
+    return;
+  }
+
   switch(cmd.toLowerCase()) {
   case 'custom':
     yield* this.onCmdCustom(msg, rest);
