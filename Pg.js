@@ -194,7 +194,10 @@ exports.putChat = function*(username, message, timestamp, isBot, channelName) {
 
   let sql = 'INSERT INTO chats(user_id, message, created) VALUES ($1, $2, $3)';
   let par = [user.id, message, timestamp];
-  yield* query(sql, par);
+  try {
+    yield* query(sql, par);
+  } catch(e) {
+  }
 };
 
 /*

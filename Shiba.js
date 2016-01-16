@@ -240,7 +240,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'crsh':
   case 'cra':
   case 'cr':
-    this.webClient.doSay('@' + msg.username + ' use !bust instead');
+    this.webClient.doSay('@' + msg.username + ' use !bust instead', msg.channelName);
   case 'bust':
   case 'bst':
   case 'bt':
