@@ -281,7 +281,7 @@ Client.prototype.onGameStarted = function(bets) {
 
 Client.prototype.onGameTick = function(elapsed) {
   // Correct startTime every tick.
-  self.startTime = Math.min(self.startTime, Date.now() - elapsed);
+  this.startTime = Math.min(this.startTime, Date.now() - elapsed);
 
   // Print verbose tick information
   let at   = Lib.growthFunc(elapsed);
