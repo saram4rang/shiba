@@ -14,7 +14,6 @@ const debuguser    =  require('debug')('shiba:user');
 const debugtick    =  require('debug')('verbose:tick');
 
 const Lib          =  require('./Lib');
-const LinearModel  =  require('./LinearModel');
 
 module.exports = Client;
 
@@ -64,9 +63,6 @@ function Client(config) {
   this.username  = null;
   this.balance   = null;
   this.game      = null;
-
-  /** A linear regression model to estimate tick times. */
-  this.tickModel = null;
 
   // Save configuration and stuff.
   this.config = config;
@@ -219,9 +215,6 @@ Client.prototype.onJoin = function(data) {
         micro:   microtime.now() - this.game.microStartTime
       };
     this.game.ticks.push(tickInfo);
-    this.tickModel = new LinearModel();
-    this.tickModel.add(0,0);
-    this.tickModel.add(tickInfo.elapsed, tickInfo.micro);
   }
 
   let players = data.player_info;
@@ -296,8 +289,6 @@ Client.prototype.onGameStarted = function(bets) {
       micro: 0
     };
   this.game.ticks.push(tickInfo);
-  this.tickModel = new LinearModel();
-  this.tickModel.add(0, 0);
 
   if (this.userState === 'PLACED') {
     debuguser('User state: PLACED -> PLAYING');
@@ -322,7 +313,6 @@ Client.prototype.onGameTick = function(data) {
                        micro: micro - this.game.microStartTime
                      };
   this.game.ticks.push(tickInfo);
-  this.tickModel.add(elapsed, tickInfo.micro);
 
   let diffElapsed = tickInfo.elapsed - previousTick.elapsed;
   let diffMicro   = tickInfo.micro - previousTick.micro;
@@ -447,16 +437,6 @@ Client.prototype.doCashout = function() {
   });
 };
 
-Client.prototype.doSetAutoCashout = function(at) {
-  debuguser('Setting auto cashout: %d', at);
-  if (this.userState !== 'PLAYING' &&
-      this.userState !== 'PLACING' &&
-      this.userState !== 'PLACED')
-    return console.error('Cannot set auto cashout in state: ' + this.userState);
-
-  this.socket.emit('set_auto_cash_out', at);
-};
-
 //Client.prototype.doSay = function(line) {
 //  debugchat('Saying: %s', line);
 //  this.socket.emit('say', line);
@@ -477,61 +457,6 @@ Client.prototype.getLastTick = function() {
              growth: 100,
              micro: 0
            };
-};
-
-Client.prototype.elapsedToMicro = function(elapsed) {
-  this.tickModel.evaluate(elapsed);
-};
-
-Client.prototype.estimateTickTimeDiff = function() {
-  let diffs = [];
-  let ticks = this.game.ticks;
-
-  if (ticks.length < 2)
-    return { lower: 0, upper: 0 };
-  if (ticks.length < 3) {
-    let t = ticks[1].elapsed - ticks[0].elapsed;
-    return { lower: t, upper: t };
-  }
-  if (ticks.length < 4) {
-    let t1 = ticks[1].elapsed - ticks[0].elapsed;
-    let t2 = ticks[2].elapsed - ticks[1].elapsed;
-
-    return { lower: Math.min(t1,t2),
-             upper: Math.max(t1,t2)
-           };
-  }
-
-  for (let i = 1; i < ticks.length; ++i)
-    diffs.push(ticks[i].elapsed - ticks[i-1].elapsed);
-
-  diffs.sort(function(a,b) { return a - b; });
-  return { lower: diffs[Math.floor(0.05 * diffs.length)],
-           upper: diffs[Math.floor(0.95 * diffs.length)]
-         };
-};
-
-Client.prototype.estimateNextTick = function() {
-  let last = this.getLastTick();
-  let tickdiff = this.estimateTickTimeDiff();
-
-  // Lower estimate
-  let lower_elapsed  = Math.floor(last.elapsed + tickdiff.lower);
-  let lower_tickInfo =
-    { elapsed: lower_elapsed,
-      growth:  Lib.growthFunc(lower_elapsed),
-      micro:   this.elapsedToMicro(lower_elapsed)
-    };
-
-  // Upper estimate
-  let upper_elapsed  = Math.floor(last.elapsed + tickdiff.upper);
-  let upper_tickInfo =
-    { elapsed:    upper_elapsed,
-      growth:     Lib.growthFunc(upper_elapsed),
-      micro:      this.elapsedToMicro(upper_elapsed)
-    };
-
-  return { lower: lower_tickInfo, upper: upper_tickInfo };
 };
 
 Client.prototype.timeTillStart = function() {
