@@ -3,7 +3,6 @@
 const _            =  require('lodash');
 const EventEmitter =  require('events').EventEmitter;
 const inherits     =  require('util').inherits;
-const microtime    =  require('microtime');
 const co           =  require('co');
 const request      =  require('co-request');
 const SocketIO     =  require('socket.io-client');
@@ -195,8 +194,6 @@ Client.prototype.onJoin = function(data) {
       players:         data.player_info,
       state:           data.state,
       startTime:       new Date(data.created),
-      microStartTime:  null,
-      ticks:           [],
       // Valid after crashed
       crashpoint:      null,
       serverSeed:      null,
@@ -205,16 +202,6 @@ Client.prototype.onJoin = function(data) {
 
   for (let i = 0; i < data.joined.length; ++i) {
     this.game.players[data.joined[i]] = {};
-  }
-
-  if (data.state === 'IN_PROGRESS') {
-    this.game.microStartTime = this.game.startTime * 1000;
-    let tickInfo =
-      { elapsed: data.elapsed,
-        growth:  Lib.growthFunc(data.elapsed),
-        micro:   microtime.now() - this.game.microStartTime
-      };
-    this.game.ticks.push(tickInfo);
   }
 
   let players = data.player_info;
@@ -251,8 +238,6 @@ Client.prototype.onGameStarting = function(data) {
       players:         {},
       state:           'STARTING',
       startTime:       new Date(Date.now() + data.time_till_start),
-      microStartTime:  microtime.now() + 1000 * data.time_till_start,
-      ticks:           [],
       // Valid after crashed
       crashpoint:      null,
       serverSeed:      null,
@@ -270,7 +255,6 @@ Client.prototype.onGameStarted = function(bets) {
   debuggame('Game #%d started', this.game.id);
   this.game.state          = 'IN_PROGRESS';
   this.game.startTime      = new Date();
-  this.game.microStartTime = microtime.now();
 
   for (let username in bets) {
     if (this.username === username)
@@ -282,13 +266,6 @@ Client.prototype.onGameStarted = function(bets) {
     else
       this.game.players[username] = { bet: bets[username] };
   }
-
-  let tickInfo =
-    { elapsed: 0,
-      growth: 100,
-      micro: 0
-    };
-  this.game.ticks.push(tickInfo);
 
   if (this.userState === 'PLACED') {
     debuguser('User state: PLACED -> PLAYING');
@@ -302,30 +279,17 @@ Client.prototype.onGameStarted = function(bets) {
   this.emit('game_started', bets);
 };
 
-Client.prototype.onGameTick = function(data) {
-  // TODO: Simplify after server upgrade
-  let elapsed      = typeof data === 'object' ? data.elapsed : data;
-  let at           = Lib.growthFunc(elapsed);
-  let previousTick = this.getLastTick();
-  let micro        = microtime.now();
-  let tickInfo     = { elapsed: elapsed,
-                       growth: at,
-                       micro: micro - this.game.microStartTime
-                     };
-  this.game.ticks.push(tickInfo);
+Client.prototype.onGameTick = function(elapsed) {
+  // Correct startTime every tick.
+  self.startTime = Math.min(self.startTime, Date.now() - elapsed);
 
-  let diffElapsed = tickInfo.elapsed - previousTick.elapsed;
-  let diffMicro   = tickInfo.micro - previousTick.micro;
-  let next        = this.estimateNextTick();
-  let line        = Lib.formatFactor(at);
+  // Print verbose tick information
+  let at   = Lib.growthFunc(elapsed);
+  let line = Lib.formatFactor(at);
   line = line + " elapsed " + elapsed;
-  line = line + " 'ΔElapsed " + diffElapsed + "'";
-  line = line + " 'ΔMicro " + diffMicro + "'";
-  line = line + " next " + Lib.formatFactor(next.upper.growth);
-  line = line + " " + next.lower.elapsed + ' < tick < ' + next.upper.elapsed;
 
   debugtick('Tick ' + line);
-  this.emit('game_tick', tickInfo);
+  this.emit('game_tick', elapsed);
 };
 
 Client.prototype.onGameCrash = function(data) {
@@ -437,28 +401,6 @@ Client.prototype.doCashout = function() {
   });
 };
 
-//Client.prototype.doSay = function(line) {
-//  debugchat('Saying: %s', line);
-//  this.socket.emit('say', line);
-//};
-
-//Client.prototype.doMute = function(user, timespec) {
-//  debugchat('Muting user: %s time: %s', user, timespec);
-//  let line = '/mute ' + user;
-//  if (timespec) line = line + ' ' + timespec;
-//  this.socket.emit('say', line);
-//};
-
-Client.prototype.getLastTick = function() {
-  if (this.game.ticks.length > 0)
-    return _.last(this.game.ticks);
-  else
-    return { elapsed: 0,
-             growth: 100,
-             micro: 0
-           };
-};
-
 Client.prototype.timeTillStart = function() {
   return this.startTime - Date.now();
 };
@@ -474,9 +416,7 @@ Client.prototype.getGameInfo = function() {
       server_seed_hash: this.game.serverSeedHash,
       player_info:      this.game.players,
       state:            this.game.state,
-      ticks:            this.game.ticks,
-      started:          this.game.startTime,
-      micro_time:       this.game.microStartTime
+      started:          this.game.startTime
     };
 
   if (this.game.state === 'ENDED') {
