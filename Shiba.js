@@ -384,7 +384,7 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
   }
 
   // Somebody asks us when we've seen ourselves.
-  if (user === this.client.username.toLowerCase()) {
+  if (this.client.username && this.client.username.toLowerCase() === user) {
     this.webClient.doSay('strange loops. much confusion.', msg.channelName);
     return;
   }
