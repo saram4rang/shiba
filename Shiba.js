@@ -23,6 +23,7 @@ const CmdBust      =  require('./Cmd/Bust');
 const CmdMedian    =  require('./Cmd/Median');
 const CmdProb      =  require('./Cmd/Prob');
 const CmdProfit    =  require('./Cmd/Profit');
+const CmdSql       =  require('./Cmd/Sql');
 const CmdStreak    =  require('./Cmd/Streak');
 
 const mkCmdBlock     =  require('./Cmd/Block');
@@ -52,6 +53,7 @@ function Shiba() {
     self.cmdMedian   = new CmdMedian();
     self.cmdProb     = new CmdProb();
     self.cmdProfit   = new CmdProfit();
+    self.cmdSql      = new CmdSql();
     self.cmdStreak   = new CmdStreak();
 
     // Connect to the game server.
@@ -279,6 +281,9 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'prf':
   case 'prt':
     yield* this.cmdProfit.handle(this.webClient, msg, rest);
+    break;
+  case 'sql':
+    yield* this.cmdSql.handle(this.client, msg, rest);
     break;
   case 'streak':
     yield* this.cmdStreak.handle(this.webClient, msg, rest);

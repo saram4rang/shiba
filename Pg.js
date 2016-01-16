@@ -35,6 +35,7 @@ function *query(sql, params) {
     done();
   }
 }
+exports.query = query;
 
 /**
  * Runs a session and retries if it deadlocks.
