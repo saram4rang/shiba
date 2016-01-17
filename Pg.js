@@ -67,6 +67,7 @@ function* withClient(runner) {
     return result;
   } catch (ex) {
     if (ex.code === '40P01') { // Deadlock
+      console.warn('Deadlock detected. Retrying..');
       done();
       return yield* withClient(runner);
     }
@@ -343,13 +344,14 @@ exports.putGame = function*(info) {
 
     let sql =
       'INSERT INTO ' +
-      'games(id, game_crash, seed, started) ' +
-      'VALUES ($1, $2, $3, $4)';
+      'games(id, game_crash, seed, created, started) ' +
+      'VALUES ($1, $2, $3, $4, $5)';
     let par =
       [ info.game_id,
         info.game_crash,
         info.server_seed || info.hash,
-        info.started || null
+        new Date(info.created),
+        new Date(info.startTime)
       ];
     yield* query(sql, par);
 
@@ -370,12 +372,7 @@ exports.putGame = function*(info) {
           play.joined || null
         ];
 
-      try {
-        yield* query(sql, par);
-      } catch(err) {
-        console.error('Insert play failed. Values:', play);
-        throw err;
-      }
+      yield* query(sql, par);
     }
   });
 };
@@ -698,4 +695,27 @@ exports.getSiteProfitGames = function*(games) {
   let data = yield* query(sql, par);
 
   return data.rows[0].profit;
+};
+
+exports.getMissingGames = function*() {
+  // Retrieve maximum game id
+  let res = yield* query(
+    'SELECT MAX(id) FROM games'
+  );
+  if (res.rows.length !== 1)
+    return [];
+  let max = res.rows[0].max;
+
+  // Retrieve missing games
+  let missing = yield* query(
+    `WITH s AS
+       (SELECT num AS missing
+          FROM  generate_series($1::bigint, $2::bigint) t(num)
+          LEFT JOIN games ON (t.num = games.id)
+          WHERE games.id IS NULL)
+       SELECT array_agg(s.missing) AS missing FROM s`,
+    [2000000, max]
+  );
+
+  return missing.rows[0].missing;
 };

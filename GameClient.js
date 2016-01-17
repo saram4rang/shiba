@@ -159,9 +159,14 @@ Client.prototype.onJoin = function(data) {
        }
   */
 
+  let created = data.created = new Date(data.created).getTime();
+  // TODO: is this also valid for ENDED?
+  let startTime = Date.now() - data.elapsed;
+
   let copy =
     { state:        data.state,
       game_id:      data.game_id,
+      created:      created,
       last_hash:    data.last_hash,
       elapsed:      data.elapsed,
       username:     data.username,
@@ -174,18 +179,18 @@ Client.prototype.onJoin = function(data) {
   this.game =
     { id:              data.game_id,
       serverSeedHash:  data.last_hash,
+      created:         created,
+      startTime:       startTime,
       players:         data.player_info,
       state:           data.state,
-      startTime:       new Date(data.created),
       // Valid after crashed
       crashpoint:      null,
       serverSeed:      null,
       forced:          null
     };
 
-  for (let i = 0; i < data.joined.length; ++i) {
+  for (let i = 0; i < data.joined.length; ++i)
     this.game.players[data.joined[i]] = {};
-  }
 
   let players = data.player_info;
 
@@ -218,9 +223,10 @@ Client.prototype.onGameStarting = function(data) {
     { id:              data.game_id,
       // The server seed hash is always the seed of the previous games.
       serverSeedHash:  this.lastServerSeed,
+      created:         Date.now(),
+      startTime:       Date.now() + data.time_till_start,
       players:         {},
       state:           'STARTING',
-      startTime:       new Date(Date.now() + data.time_till_start),
       // Valid after crashed
       crashpoint:      null,
       serverSeed:      null,
@@ -237,7 +243,7 @@ Client.prototype.onGameStarting = function(data) {
 Client.prototype.onGameStarted = function(bets) {
   debuggame('Game #%d started', this.game.id);
   this.game.state          = 'IN_PROGRESS';
-  this.game.startTime      = new Date();
+  this.game.startTime      = Date.now();
 
   for (let username in bets) {
     if (this.username === username)
@@ -277,7 +283,7 @@ Client.prototype.onTick = function(data) {
 /* TODO: Inline into the above after gameserver update. */
 Client.prototype.onGameTick = function(elapsed) {
   // Correct startTime every tick.
-  this.startTime = Math.min(this.startTime, Date.now() - elapsed);
+  this.game.startTime = Math.min(this.game.startTime, Date.now() - elapsed);
 
   // Print verbose tick information
   let at   = Lib.growthFunc(elapsed);
@@ -420,7 +426,8 @@ Client.prototype.getGameInfo = function() {
       server_seed_hash: this.game.serverSeedHash,
       player_info:      this.game.players,
       state:            this.game.state,
-      started:          this.game.startTime
+      created:          this.game.created,
+      startTime:        this.game.startTime
     };
 
   if (this.game.state === 'ENDED') {
