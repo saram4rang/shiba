@@ -74,8 +74,10 @@ function Client(config) {
   this.socket.on('disconnect', this.onDisconnect.bind(this));
   this.socket.on('game_starting', this.onGameStarting.bind(this));
   this.socket.on('game_started', this.onGameStarted.bind(this));
+  this.socket.on('tick', this.onTick.bind(this));
   this.socket.on('game_tick', this.onGameTick.bind(this));
   this.socket.on('game_crash', this.onGameCrash.bind(this));
+  this.socket.on('bets', this.onBets.bind(this));
   this.socket.on('player_bet', this.onPlayerBet.bind(this));
   this.socket.on('cashed_out', this.onCashedOut.bind(this));
   //this.socket.on('msg', this.onMsg.bind(this));
@@ -102,8 +104,10 @@ Client.prototype.onConnect = function(data) {
     debug("Received one time token: " + ott);
     debug("Joining the game");
 
-    let info = ott ? { ott: "" + ott } : {};
-    self.socket.emit('join', info, function(err, data) {
+    self.socket.emit('join', {
+      ott: ott,
+      api_version: 1
+    }, function(err, data) {
       if (err)
         console.error('[ERROR] onConnect:', err);
       else
@@ -279,6 +283,18 @@ Client.prototype.onGameStarted = function(bets) {
   this.emit('game_started', bets);
 };
 
+Client.prototype.onTick = function(data) {
+  var elapsed = data[0];
+  var cashouts = data[1];
+
+  var self = this;
+  _.forEach(cashouts, (stoppedAt, username) => {
+    self.onCashedOut({username: username, stopped_at: stoppedAt});
+  });
+  self.onGameTick(elapsed);
+};
+
+/* TODO: Inline into the above after gameserver update. */
 Client.prototype.onGameTick = function(elapsed) {
   // Correct startTime every tick.
   this.startTime = Math.min(this.startTime, Date.now() - elapsed);
@@ -330,6 +346,21 @@ Client.prototype.onGameCrash = function(data) {
   this.emit('game_crash', data, gameInfo);
 };
 
+Client.prototype.onBets = function(data) {
+  this.emit('bets', data);
+
+  for (var i = 0; i < data.length;) {
+    var index    = data[i++];
+    var username = data[i++];
+
+    this.onPlayerBet({
+      username: username,
+      index: index
+    });
+  }
+};
+
+/* TODO: Inline into the above after gameserver upgrade. */
 Client.prototype.onPlayerBet = function(data) {
   data.joined = new Date();
   this.game.players[data.username] = data;
@@ -337,9 +368,6 @@ Client.prototype.onPlayerBet = function(data) {
   if (this.username === data.username) {
     debuguser('User state: %s -> PLACED', this.userState);
     this.userState = 'PLACED';
-    // TODO: deprecate after server upgrade
-    if (!data.hasOwnProperty('index'))
-        this.balance -= data.bet;
     this.emit('player_bet', data);
     this.emit('user_bet', data);
   } else {
