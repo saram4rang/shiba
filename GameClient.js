@@ -66,7 +66,7 @@ function Client(config) {
   this.config = config;
 
   debug("Setting up connection to %s", config.GAMESERVER);
-  this.socket = SocketIO(config.GAMESERVER);
+  this.socket = SocketIO(config.GAMESERVER, { multiplex: false });
   this.socket.on('error', this.onError.bind(this));
   this.socket.on('err', this.onErr.bind(this));
   this.socket.on('connect', this.onConnect.bind(this));
@@ -263,6 +263,7 @@ Client.prototype.onGameStarted = function(bets) {
 };
 
 Client.prototype.onTick = function(data) {
+  debug('New tick. Cashouts: %d', Object.getOwnPropertyNames(data[1]).length);
   var elapsed = data[0];
   var cashouts = data[1];
 
@@ -326,6 +327,7 @@ Client.prototype.onGameCrash = function(data) {
 };
 
 Client.prototype.onBets = function(data) {
+  debug('%s New bets. Bets: %d', "" + this.timeTillStart(), data.length >> 1);
   this.emit('bets', data);
 
   for (var i = 0; i < data.length;) {
@@ -404,7 +406,7 @@ Client.prototype.doCashout = function() {
 };
 
 Client.prototype.timeTillStart = function() {
-  return this.startTime - Date.now();
+  return this.game.startTime - Date.now();
 };
 
 Client.prototype.getPlayers = function() {
@@ -442,7 +444,7 @@ Client.prototype.getGameInfo = function() {
 function* getOtt(config) {
   if (!config.SESSION) return null;
 
-  debug("Requesting one time token");
+  debug("Requesting one time token for session: %s", config.SESSION);
 
   let cookie = request.cookie('id=' + config.SESSION);
   let url    = config.WEBSERVER + '/ott';
