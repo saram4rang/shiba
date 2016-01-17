@@ -9,7 +9,6 @@ const SocketIO     =  require('socket.io-client');
 const debug        =  require('debug')('shiba:client');
 const debuggame    =  require('debug')('shiba:game');
 const debuguser    =  require('debug')('shiba:user');
-//const debugchat    =  require('debug')('shiba:chat');
 const debugtick    =  require('debug')('verbose:tick');
 
 const Lib          =  require('./Lib');
@@ -80,7 +79,6 @@ function Client(config) {
   this.socket.on('bets', this.onBets.bind(this));
   this.socket.on('player_bet', this.onPlayerBet.bind(this));
   this.socket.on('cashed_out', this.onCashedOut.bind(this));
-  //this.socket.on('msg', this.onMsg.bind(this));
 }
 
 inherits(Client, EventEmitter);
@@ -133,24 +131,6 @@ Client.prototype.onJoin = function(data) {
          "elapsed":3597,
          "created":"2015-01-23T22:44:06.093Z",
          "joined":[],
-         "chat":[ {"time":"2015-01-23T21:59:08.405Z",
-                   "type":"say",
-                   "username":"Steve",
-                   "role":"user",
-                   "message":"Hi"},
-                  {"time":"2015-01-23T22:04:46.586Z",
-                   "type":"say",
-                   "username":"Ryan",
-                   "role":"admin",
-                   "message":"Hi"
-                  },
-                  {"time":"2015-01-23T22:04:59.297Z",
-                   "type":"say",
-                   "username":"Shiba",
-                   "role":"moderator",
-                   "message":"*bark*"
-                  }
-                ]
          "table_history": [ {"game_id":1023469,
                              "game_crash":0,
                              "created":"2015-01-23T22:43:58.025Z",
@@ -173,7 +153,6 @@ Client.prototype.onJoin = function(data) {
          "elapsed":-1434,
          "created":"2015-01-24T07:48:46.261Z",
          "joined":["Steve","Shiba"],
-         "chat":[],
          "table_history": [],
          "username":null,
          "balance_satoshis":null
@@ -398,11 +377,6 @@ Client.prototype.onCashedOut = function(data) {
     this.emit('cashed_out', data);
   }
 };
-
-//Client.prototype.onMsg = function(msg) {
-//  debugchat('Msg: %s', JSON.stringify(msg));
-//  this.emit('msg', msg);
-//};
 
 Client.prototype.doBet = function(amount, autoCashout) {
   debuguser('Bet: %d @%d', amount, autoCashout);
