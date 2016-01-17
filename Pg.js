@@ -183,21 +183,28 @@ function* getUser(username) {
 
 /*
 CREATE TABLE chats (
-  id bigint NOT NULL.
+  id bigint NOT NULL,
   user_id bigint NOT NULL,
+  channel text NOT NULL,
   message text NOT NULL,
+  is_bot boolean NOT NULL,
   created timestamp with time zone DEFAULT now() NOT NULL
 );
 */
-exports.putChat = function*(username, message, timestamp, isBot, channelName) {
+exports.putChat = function*(username, channelName, message, isBot, timestamp) {
   debug('Recording chat message. User: ' + username);
   let user = yield* getUser(username);
 
-  let sql = 'INSERT INTO chats(user_id, message, created) VALUES ($1, $2, $3)';
-  let par = [user.id, message, timestamp];
+  let sql = 'INSERT INTO chats(user_id, channel, message, is_bot, created) VALUES ($1, $2, $3, $4, $5)';
+  let par = [user.id, channelName, message, isBot, timestamp];
   try {
     yield* query(sql, par);
-  } catch(e) {
+  } catch(err) {
+    console.log('ARGUMENTS:', arguments);
+    if (err instanceof Error)
+      console.error('[Pg.putChat] ERROR:', err.stack);
+    else
+      console.error('[Pg.putChat] ERROR:', err);
   }
 };
 
@@ -247,7 +254,13 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
 exports.putMsg = function*(msg) {
   switch(msg.type) {
   case 'say':
-    yield* this.putChat(msg.username, msg.message, new Date(msg.date));
+    yield* this.putChat(
+      msg.username,
+      msg.channelName,
+      msg.message,
+      msg.bot,
+      new Date(msg.date)
+    );
     break;
   case 'mute':
     yield* this.putMute(
@@ -307,7 +320,7 @@ exports.getLastMessages = function*() {
      LIMIT $1";
   let par = [Config.CHAT_HISTORY];
 
-  let res = yield [sql1,sql2,sql3].map((sql) => query(sql,par));
+  let res = yield [sql1,sql2,sql3].map(sql => query(sql,par));
   res = res[0].rows.concat(res[1].rows,res[2].rows);
   res = res.sort((a,b) => new Date(a.date) - new Date(b.date));
 

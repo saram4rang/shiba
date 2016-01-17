@@ -144,6 +144,10 @@ ChatStore.prototype.get = function() {
 function* make(writeToDb) {
   debug('Create chat store');
   let msgs = yield* Pg.getLastMessages();
+  debug('Got %d old messages', msgs.length);
+  _.forEach(msgs, msg => {
+    debugv('Old message: %s', JSON.stringify(msg));
+  });
   return new ChatStore(msgs, writeToDb);
 }
 

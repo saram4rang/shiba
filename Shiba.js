@@ -82,9 +82,14 @@ function Shiba() {
     self.webClient.on('msg', function(msg) {
       co(function*(){
         yield* self.chatStore.addMessage(msg);
-        if (msg.type === 'say')
-          yield* self.onSay(msg);
       }).catch(err => console.error('[ERROR] onMsg:', err.stack));
+    });
+    // Setup a handler for new messages added to the store, so that unseen
+    // messages during a restart are handled properly.
+    self.chatStore.on('msg', function(msg) {
+      if (msg.type === 'say') {
+        co(function*() { yield* self.onSay(msg); });
+      }
     });
 
     self.cmdBlock.setClient(self.webClient);

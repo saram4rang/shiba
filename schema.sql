@@ -37,10 +37,10 @@ CREATE TYPE UserClassEnum AS ENUM ('user', 'moderator', 'admin');
 CREATE TABLE chats (
   id bigint NOT NULL,
   user_id bigint NOT NULL,
+  channel text NOT NULL,
   message text NOT NULL,
-  created timestamp with time zone DEFAULT now() NOT NULL,
   is_bot boolean NOT NULL,
-  channel text NOT NULL
+  created timestamp with time zone DEFAULT now() NOT NULL
 );
 CREATE SEQUENCE chats_id_seq
   START WITH 1
