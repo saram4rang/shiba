@@ -9,6 +9,6 @@ module.exports =
     OXR_APP_ID:     process.env.OXR_APP_ID,
     SESSION:        process.env.SHIBA_SESSION,
     DATABASE:       process.env.SHIBA_DATABASE || 'postgres://localhost/shibadb',
-    CHAT_HISTORY:   process.env.SHIBA_CHAT_HISTORY || 100,
-    GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 100
+    CHAT_HISTORY:   process.env.SHIBA_CHAT_HISTORY || 2000,
+    GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 200
   };

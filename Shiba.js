@@ -1,10 +1,11 @@
 'use strict';
 
-const _            =  require('lodash');
-const co           =  require('co');
-const debug        =  require('debug')('shiba');
-const debugblock   =  require('debug')('shiba:blocknotify');
-const debugautomute = require('debug')('shiba:automute');
+const _             =  require('lodash');
+const co            =  require('co');
+const fs            =  require('fs');
+const debug         =  require('debug')('shiba');
+const debugblock    =  require('debug')('shiba:blocknotify');
+const debugautomute =  require('debug')('shiba:automute');
 
 const profanity    =  require('./profanity');
 const Unshort      =  require('./Util/Unshort');
@@ -31,6 +32,13 @@ const mkAutomuteStore = require('./Store/Automute');
 const mkChatStore     = require('./Store/Chat');
 const mkGameStore     = require('./Store/Game');
 
+// Make sure directories exist for the filesystem log
+function ensureDirSync(dir) {
+  try { fs.mkdirSync(dir); }
+  catch(e) { if (e.code !== 'EEXIST') throw e; }
+}
+ensureDirSync('chatlogs');
+
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
@@ -43,8 +51,8 @@ function Shiba() {
 
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
-    self.chatStore     = yield* mkChatStore(false);
-    self.gameStore     = yield* mkGameStore(false);
+    self.chatStore     = yield* mkChatStore(true);
+    self.gameStore     = yield* mkGameStore(true);
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();
@@ -95,6 +103,7 @@ function Shiba() {
     self.cmdBlock.setClient(self.webClient);
 
     self.setupScamComment();
+    self.setupChatlogWriter();
   }).catch(function(err) {
     // Abort immediately when an exception is thrown on startup.
     console.error(err.stack);
@@ -110,6 +119,30 @@ Shiba.prototype.setupScamComment = function() {
 
     if (gameInfo.verified !== 'ok')
       self.webClient.doSay('wow. such scam. very hash failure.', 'english');
+  });
+};
+
+Shiba.prototype.setupChatlogWriter = function() {
+  let chatDate    = null;
+  let chatStream  = null;
+
+  this.chatStore.on('msg', msg => {
+    // Write to the chatlog file. We create a file for each date.
+    let now = new Date(Date.now());
+
+    if (!chatDate || now.getUTCDay() !== chatDate.getUTCDay()) {
+      // End the old write stream for the previous date.
+      if (chatStream) chatStream.end();
+
+      // Create new write stream for the current date.
+      let chatFile =
+        "chatlogs/" + now.getUTCFullYear() +
+        ('0'+(now.getUTCMonth()+1)).slice(-2) +
+        ('0'+now.getUTCDate()).slice(-2) + ".log";
+      chatDate   = now;
+      chatStream = fs.createWriteStream(chatFile, {flags:'a'});
+    }
+    chatStream.write(JSON.stringify(msg) + '\n');
   });
 };
 
