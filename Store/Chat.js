@@ -8,14 +8,13 @@ const _            = require('lodash');
 const Config       = require('../Config');
 const Pg           = require('../Pg');
 
-function ChatStore(store, writeToDb) {
+function ChatStore(store) {
   debug('Initializing chat store');
   EventEmitter.call(this);
 
   // This array holds all the chat messages sorted from
   // old to new.
   this.store = store || [];
-  this.writeToDb = writeToDb;
 }
 
 inherits(ChatStore, EventEmitter);
@@ -83,8 +82,7 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
     } else if (nt < ot) {
       debugv('Merge new message: %s', JSON.stringify(nm));
       try {
-        if (self.writeToDb)
-          yield* Pg.putMsg(nm);
+        yield* Pg.putMsg(nm);
       } catch(err) {
         console.error('Failed to log msg:', nm, '\nError:', err);
       }
@@ -111,8 +109,7 @@ ChatStore.prototype.addMessage = function*(msg) {
   debug('Adding message: ' + JSON.stringify(msg));
 
   try {
-    if (this.writeToDb)
-      yield* Pg.putMsg(msg);
+    yield* Pg.putMsg(msg);
   } catch(err) {
     console.error('Failed to log msg:', msg, '\nError:', err);
   }
@@ -141,14 +138,14 @@ ChatStore.prototype.get = function() {
   return this.store;
 };
 
-function* make(writeToDb) {
+function* make() {
   debug('Create chat store');
   let msgs = yield* Pg.getLastMessages();
   debug('Got %d old messages', msgs.length);
   _.forEach(msgs, msg => {
     debugv('Old message: %s', JSON.stringify(msg));
   });
-  return new ChatStore(msgs, writeToDb);
+  return new ChatStore(msgs);
 }
 
 module.exports = exports = make;

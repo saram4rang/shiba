@@ -7,7 +7,7 @@ const debugv       = require('debug')('verbose:store:game');
 const Config       = require('../Config');
 const Pg           = require('../Pg');
 
-function GameStore(store, writeToDb) {
+function GameStore(store) {
   debug('Initializing game store');
   debugv('Initial store: %s', JSON.stringify(store, null, ' '));
 
@@ -15,7 +15,6 @@ function GameStore(store, writeToDb) {
 
   // This array holds all the game infos sorted from old to new.
   this.store = store || [];
-  this.writeToDb = writeToDb;
 }
 
 inherits(GameStore, EventEmitter);
@@ -51,8 +50,7 @@ GameStore.prototype.mergeGames = function*(games) {
     } else if (ng.game_id < og.game_id) {
       debugv('Merge new game: %s', JSON.stringify(ng));
       try {
-        if (self.writeToDb)
-          yield* Pg.putGame(ng);
+        yield* Pg.putGame(ng);
       } catch(err) {
         console.error('Failed to log game:', ng, '\nError:', err);
       }
@@ -70,12 +68,10 @@ GameStore.prototype.mergeGames = function*(games) {
 };
 
 GameStore.prototype.addGame = function*(game) {
-  delete game.ticks;
   debug('Adding game: ' + JSON.stringify(game));
 
   try {
-    if (this.writeToDb)
-      yield* Pg.putGame(game);
+    yield* Pg.putGame(game);
   } catch(err) {
     console.error('Failed to log game:', game, '\nError:', err);
   }
@@ -87,10 +83,10 @@ GameStore.prototype.addGame = function*(game) {
   this.emit('game', game);
 };
 
-function* make(writeToDb) {
+function* make() {
   debug('Create game store');
   let games = yield* Pg.getLastGames();
-  return new GameStore(games, writeToDb);
+  return new GameStore(games);
 }
 
 module.exports = exports = make;

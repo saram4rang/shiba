@@ -51,8 +51,8 @@ function Shiba() {
 
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
-    self.chatStore     = yield* mkChatStore(true);
-    self.gameStore     = yield* mkGameStore(true);
+    self.chatStore     = yield* mkChatStore();
+    self.gameStore     = yield* mkGameStore();
 
     self.cmdAutomute = new CmdAutomute(self.automuteStore);
     self.cmdConvert  = new CmdConvert();
