@@ -321,7 +321,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     yield* this.cmdProfit.handle(this.webClient, msg, rest);
     break;
   case 'sql':
-    yield* this.cmdSql.handle(this.client, msg, rest);
+    yield* this.cmdSql.handle(this.webClient, msg, rest);
     break;
   case 'streak':
     yield* this.cmdStreak.handle(this.webClient, msg, rest);

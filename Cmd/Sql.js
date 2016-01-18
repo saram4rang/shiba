@@ -30,12 +30,13 @@ Sql.prototype.handle = function*(client, msg, input) {
   try {
     let result = yield* Pg.query(input, []);
     if (result.rows.length > 0) {
-      client.doSay(JSON.stringify(result.rows[0]));
+      client.doSay(JSON.stringify(result.rows[0]), msg.channelName);
     } else {
-      client.doSay('0 rows');
+      client.doSay('0 rows', msg.channelName);
     }
-  } catch(e) {    
-    client.doSay(e.toString());
+  } catch(e) {
+    console.log(e.stack || e);
+    client.doSay(e.toString(), msg.channelName);
   }
 };
 
