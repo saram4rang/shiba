@@ -2,6 +2,8 @@
 
 const EventEmitter = require('events').EventEmitter;
 const inherits     = require('util').inherits;
+const request      = require('co-request');
+const wait         = require('co-wait');
 const debug        = require('debug')('shiba:store:game');
 const debugv       = require('debug')('verbose:store:game');
 const Config       = require('../Config');
@@ -19,54 +21,6 @@ function GameStore(store) {
 
 inherits(GameStore, EventEmitter);
 
-GameStore.prototype.mergeGames = function*(games) {
-
-  let self = this;
-  let na   = games, oa = this.store;
-  let m    = [];
-  let ni   = 0, oi = 0;
-
-  while (true) {
-    if (!(oi < oa.length)) {
-      // No more old messages just import the new ones.
-      let games = na.splice(ni);
-      if (games.length > 0)
-        debug('Importing new games: %s', JSON.stringify(games, null, ' '));
-
-      this.store = m;
-      for (let game of games)
-        yield* this.addGame(game);
-      return;
-    }
-
-    // Extract old and new game infos.
-    let og = oa[oi], ng = na[ni];
-
-    if (og.game_id < ng.game_id) {
-      debugv('Merge old game: %s', JSON.stringify(og));
-      m.push(og);
-      oi++;
-      continue;
-    } else if (ng.game_id < og.game_id) {
-      debugv('Merge new game: %s', JSON.stringify(ng));
-      try {
-        yield* Pg.putGame(ng);
-      } catch(err) {
-        console.error('Failed to log game:', ng, '\nError:', err);
-      }
-      m.push(ng);
-      ni++;
-      continue;
-    } else {
-      debugv('Merge common game: %s', JSON.stringify(og));
-      m.push(og);
-      oi++;
-      ni++;
-      continue;
-    }
-  }
-};
-
 GameStore.prototype.addGame = function*(game) {
   debug('Adding game: ' + JSON.stringify(game));
 
@@ -81,6 +35,62 @@ GameStore.prototype.addGame = function*(game) {
 
   this.store.push(game);
   this.emit('game', game);
+};
+
+function* getGameInfo(id) {
+
+  let url = Config.WEBSERVER + '/game/' + id + '.json';
+  let res = yield request(url);
+
+  if (res.statusCode != 200)
+    throw 'INVALID_STATUSCODE';
+
+  return JSON.parse(res.body);
+}
+
+GameStore.prototype.importGame = function*(id) {
+  debug('Importing game: %d', id);
+  let info;
+  try {
+    info = yield* getGameInfo(id);
+  } catch(err) {
+    console.error('Downloading game #' + id, 'failed');
+    throw err;
+  }
+
+  info.created = new Date(info.created).getTime();
+  info.startTime = info.created + 5000; // TODO: move this constant
+
+  try {
+    yield* Pg.putGame(info);
+  } catch(err) {
+    console.error('Importing game #' + info.game_id, 'failed');
+    throw err;
+  }
+}
+
+GameStore.prototype.fillMissing = function*(data) {
+  debug('Checking for missing games before: %d', data.game_id);
+
+  let maxGameId = data.state === 'ENDED'? data.game_id : data.game_id - 1;
+
+  // Get ids of missing games. TODO: move this constants
+  let ids = yield* Pg.getMissingGames(2280000, maxGameId);
+
+  // Import them from the web.
+  for (let id of ids) {
+    try {
+      yield* this.importGame(id);
+      yield wait(200);
+    } catch(err) {
+      // Message error but continue. Could be an unterminated game.
+      console.error('Error while importing game %d:', id, err.stack || err);
+    }
+  }
+
+  // Finally replace the store with the current games. TODO: Yes, there is a
+  // race condition here, but this store isn't really used anyway...
+  this.store = yield* Pg.getLastGames();
 };
 
 function* make() {

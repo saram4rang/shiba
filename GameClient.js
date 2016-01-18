@@ -162,7 +162,7 @@ Client.prototype.onJoin = function(data) {
   let created = data.created = new Date(data.created).getTime();
   _.forEach(data.table_history, function(game) {
     game.created = new Date(game.created).getTime();
-    game.startTime = game.created + 5000;
+    game.startTime = game.created + 5000; // TODO: move this constant
   });
   // TODO: is this also valid for ENDED?
   let startTime = Date.now() - data.elapsed;

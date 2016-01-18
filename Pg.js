@@ -697,15 +697,7 @@ exports.getSiteProfitGames = function*(games) {
   return data.rows[0].profit;
 };
 
-exports.getMissingGames = function*() {
-  // Retrieve maximum game id
-  let res = yield* query(
-    'SELECT MAX(id) FROM games'
-  );
-  if (res.rows.length !== 1)
-    return [];
-  let max = res.rows[0].max;
-
+exports.getMissingGames = function*(beg, end) {
   // Retrieve missing games
   let missing = yield* query(
     `WITH s AS
@@ -714,7 +706,7 @@ exports.getMissingGames = function*() {
           LEFT JOIN games ON (t.num = games.id)
           WHERE games.id IS NULL)
        SELECT array_agg(s.missing) AS missing FROM s`,
-    [2000000, max]
+    [beg, end]
   );
 
   return missing.rows[0].missing;

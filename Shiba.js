@@ -72,8 +72,7 @@ function Shiba() {
 
     // Setup the game bindings.
     self.client.on('join', co.wrap(function*(data) {
-      let games = data.table_history.sort((a,b) => a.game_id - b.game_id);
-      yield* self.gameStore.mergeGames(games);
+      yield* self.gameStore.fillMissing(data);
     }));
     self.client.on('game_crash', co.wrap(function*(data, gameInfo) {
       yield* self.gameStore.addGame(gameInfo);
