@@ -719,3 +719,15 @@ exports.getMissingGames = function*() {
 
   return missing.rows[0].missing;
 };
+
+exports.getUserProfit = function*(username) {
+  let res = yield* query(
+    `SELECT
+       game_id AS game,
+       SUM(COALESCE(cash_out,0) + COALESCE(bonus,0) - bet)
+         OVER (ROWS UNBOUNDED PRECEDING) AS profit
+     FROM plays
+     WHERE user_id = userIdOf($1)
+     ORDER BY game_id ASC`, [username]);
+  return res.rows;
+};
