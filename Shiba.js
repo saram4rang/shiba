@@ -95,7 +95,9 @@ function Shiba() {
     // messages during a restart are handled properly.
     self.chatStore.on('msg', function(msg) {
       if (msg.type === 'say') {
-        co(function*() { yield* self.onSay(msg); });
+        co(function*() {
+          yield* self.onSay(msg);
+        }).catch(err => console.err('[ERROR] onSay:', err && err.stack || err));
       }
     });
 
