@@ -1,29 +1,29 @@
 'use strict';
 
 const fx         = require('money');
-const oxr        = require('open-exchange-rates');
 const debug      = require('debug')('shiba:exchangerate');
 
 const Config     = require('../Config');
 const Cache      = require('./Cache');
 const Bitstamp   = require('./Bitstamp');
 const Poloniex   = require('./Poloniex');
-
-// Oxr free plan only allows USD as the base currency.
-oxr.base = 'USD';
-oxr.set({ app_id: Config.OXR_APP_ID });
+const OXR        = require('./OpenExchangeRates');
 
 const ratesCache = new Cache({
   maxAge: 1000 * 60 * 60, // 1 hour
   load: function*() {
     debug('Downloading fiat exchange rates');
-    yield oxr.latest.bind(oxr);
-    return oxr.rates;
+    // Oxr free plan only allows USD as the base currency.
+    return yield* OXR.getLatest({
+      base: 'USD',
+      app_id: Config.OXR_APP_ID
+    });
   }
 });
 
 function* getFiatRates() {
-  return yield* ratesCache.get('');
+  var data = yield* ratesCache.get('');
+  return data.rates;
 }
 
 function* getRates() {
@@ -66,7 +66,7 @@ exports.getSymbols = getSymbols;
 function* convert(from, to, amount) {
   let rates = yield* getRates();
   fx.rates = rates;
-  fx.base  = oxr.base;
+  fx.base  = 'USD';
   return fx(amount).convert({from:from, to:to});
 }
 exports.convert = convert;
