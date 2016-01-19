@@ -319,6 +319,12 @@ Client.prototype.onGameCrash = function(data) {
   this.game.forced     = data.forced;
   this.game.state      = 'ENDED';
 
+  // Perform the last second cashouts
+  var self = this;
+  _.forEach(data.cashouts, (stoppedAt, username) => {
+    self.onCashedOut({username: username, stopped_at: stoppedAt});
+  });
+
   // Add the bonus to each user that wins it
   for (let playerName in data.bonuses) {
     console.assert(this.game.players[playerName]);
