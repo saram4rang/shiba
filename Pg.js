@@ -517,7 +517,7 @@ exports.getLastSeen = function*(username) {
 };
 
 exports.getLatestBlock = function*() {
-  console.log('Getting last block from DB');
+  debug('Getting last block from DB');
   let sql = 'SELECT * FROM blocks ORDER BY height DESC LIMIT 1';
   let par = [];
 

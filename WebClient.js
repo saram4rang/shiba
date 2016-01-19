@@ -51,7 +51,7 @@ WebClient.prototype.onConnect = function(data) {
 };
 
 WebClient.prototype.onJoin = function(err, data) { //{ data.username, data.moderator, data.channels }
-    console.log('Chat joined');
+    debug('Chat joined');
 
     var allChanData = {
         history: data.channels.all,
