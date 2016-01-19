@@ -10,5 +10,14 @@ module.exports =
     SESSION:        process.env.SHIBA_SESSION,
     DATABASE:       process.env.SHIBA_DATABASE || 'postgres://localhost/shibadb',
     CHAT_HISTORY:   process.env.SHIBA_CHAT_HISTORY || 2000,
-    GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 200
+    GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 200,
+    USER_WHITELIST: [ "bitcoininformation",
+                      "dexon",
+                      "dexonbot",
+                      "kungfuant",
+                      "rapetor",
+                      "ryan",
+                      "shiba",
+                      "steve"
+                    ]
   };

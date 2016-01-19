@@ -248,6 +248,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
 		  , 'profi', 'prof', 'prft', 'prf', 'prt', 'streak'
                   ];
   if (msg.channelName === 'english' &&
+      Config.USER_WHITELIST.indexOf(msg.username) < 0 &&
       blacklist.indexOf(cmd.toLowerCase()) >= 0) {
     this.webClient.doSay('@' + msg.username + ' Please use another channel for that command.', msg.channelName);
     return;
