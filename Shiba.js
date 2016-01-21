@@ -147,6 +147,9 @@ Shiba.prototype.setupChatlogWriter = function() {
 
 Shiba.prototype.checkAutomute = function*(msg) {
 
+  // Don't bother checking messages from the spam channel.
+  if (msg.channelName === 'spam') return false;
+
   // Match entire message against the regular expressions.
   let automutes = this.automuteStore.get();
   if (automutes.find(r => msg.message.match(r))) {
