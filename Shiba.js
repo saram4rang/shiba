@@ -11,8 +11,6 @@ const profanity    =  require('./profanity');
 const Unshort      =  require('./Util/Unshort');
 
 const Config       =  require('./Config');
-//Monkey patch to socket.io to send cookies in the handshake for auth
-require('socket.io-client-cookie').setCookies('id='+Config.SESSION);
 const Client       =  require('./GameClient');
 const WebClient    =  require('./WebClient');
 const Lib          =  require('./Lib');

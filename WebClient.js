@@ -2,6 +2,7 @@
 
 const EventEmitter =  require('events').EventEmitter;
 const inherits     =  require('util').inherits;
+const io           =  require('socket.io-client');
 const debug        =  require('debug')('shiba:webclient');
 const debugchat    =  require('debug')('shiba:chat');
 
@@ -13,8 +14,15 @@ function WebClient(config) {
     // Save configuration and stuff.
     this.config = config;
 
+    let opts = {
+      extraHeaders: {
+        'X-Custom-Header-For-My-Project': 'my-secret-access-token',
+        'Cookie': 'id='+config.SESSION
+      }
+    };
+
     debug("Setting up connection to %s", config.WEBSERVER);
-    this.socket = require('socket.io-client')(config.WEBSERVER);
+    this.socket = io(config.WEBSERVER, opts);
     this.socket.on('error', this.onError.bind(this));
     this.socket.on('err', this.onErr.bind(this));
     this.socket.on('connect', this.onConnect.bind(this));
