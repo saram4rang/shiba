@@ -251,7 +251,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   if (msg.channelName === 'english' &&
       Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0 &&
       blacklist.indexOf(cmd.toLowerCase()) >= 0) {
-    this.webClient.doSay('@' + msg.username + ' Please use another channel for that command.', msg.channelName);
+    this.webClient.doSay('@' + msg.username + ' Please use the SPAM channel for that command.', msg.channelName);
     return;
   }
 
