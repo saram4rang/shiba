@@ -272,10 +272,8 @@ Client.prototype.onGameStarted = function(bets) {
   this.emit('game_started', bets);
 };
 
-Client.prototype.onTick = function(data) {
-  debug('New tick. Cashouts: %d', Object.getOwnPropertyNames(data[1]).length);
-  var elapsed = data[0];
-  var cashouts = data[1];
+Client.prototype.onTick = function(elapsed, cashouts) {
+  debugtick('New tick. Cashouts: %d', Object.getOwnPropertyNames(cashouts).length);
 
   var self = this;
   _.forEach(cashouts, (stoppedAt, username) => {
