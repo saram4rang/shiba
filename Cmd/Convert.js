@@ -83,6 +83,7 @@ function pretty(iso, num, mod) {
   case 'GBP': return '£' + num + mod;
   case 'IDR': return 'Rp ' + num + mod;
   case 'INR': return '₹' + num + mod;
+  case 'KRW': return '₩' + num + mod;
   case 'USD': return '$' + num + mod;
   case 'BIT': return num === 1 && mod1 ? '1 Bit' : num + mod + ' Bits';
   case 'SAT': return num + mod + ' satoshi';

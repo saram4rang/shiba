@@ -54,11 +54,13 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       "RDD"|"REDDCOINS"|"REDDCOIN"|
       "NXT"|"NXTCOIN"
 
-/* Currency signs. Currently doesn't include "¥" because it could
- * stand for either CNY or JPY. */
-PRE   "£"|"Rp"|"₹" /* Prefix signs. */
-SUF   "zł"|"₫"     /* Suffix signs. */
-POS   "$"|"€"      /* Used in either way, d'oh! */
+/* Currency signs. Currently doesn't include "¥" because it could stand for
+ * either CNY or JPY. The Kwon symbol "₩" stands for both KRW and KPW, but we
+ * consider it as KRW here, since we do not expect any  KPW users on site.
+ */
+PRE   "£"|"Rp"|"₹"|"₩" /* Prefix signs. */
+SUF   "zł"|"₫"         /* Suffix signs. */
+POS   "$"|"€"          /* Used in either way, d'oh! */
 
 %%
 
@@ -131,6 +133,7 @@ function sym2iso(sym) {
   case 'zł':  return 'PLN';
   case '$':   return 'USD';
   case '₫':   return 'VND';
+  case '₩':   return 'KRW';
   }
 }
 
