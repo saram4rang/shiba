@@ -610,7 +610,7 @@ exports.getLastStreak = function*(count, op, bound) {
               THEN id
             END AS id_start
           FROM games
-          WHERE game_crash ' + op + ' $1),
+          WHERE game_crash ` + op + ` $1),
        t2 AS
          (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
           FROM t1),
@@ -643,7 +643,7 @@ exports.getMaxStreak = function*(op, bound) {
               THEN id
             END AS id_start
           FROM games
-          WHERE game_crash ' + op + ' $1),
+          WHERE game_crash ` + op + ` $1),
        t2 AS
          (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
           FROM t1),
