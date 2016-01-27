@@ -1337,4 +1337,4 @@ module.exports = {
   yellowman: 1,
   zigabo: 1,
   zipperhead: 1
-  };
+};

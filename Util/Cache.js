@@ -10,7 +10,10 @@ function Cache(opts) {
 
   opts.load = function(key, cb) {
     co(self.gen(key))
-      .then(function(res) { cb(null,res); }, cb);
+      .then(function(res) {
+        cb(null, res);
+      })
+      .catch(cb);
   };
 
   self.cache = new AsyncCache(opts);
@@ -18,7 +21,9 @@ function Cache(opts) {
 
 Cache.prototype.get = function*(key) {
   const cache = this.cache;
-  return yield function(cb) { cache.get(key,cb); };
+  return yield function(cb) {
+    cache.get(key, cb);
+  };
 };
 
 module.exports = Cache;

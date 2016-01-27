@@ -6,7 +6,7 @@ const Pg    = require('../Pg');
 function Automute(store) {
   debug('Initializing automute store:');
   for (let mute of store)
-    debug('' + mute);
+    debug(String(mute));
 
   this.store = store;
 }

@@ -14,10 +14,12 @@ function parse(input) {
     if (!match)
       return nums;
 
-    let numGames = parseInt(match[1]);
-    switch(match[2] && match[2].toLowerCase()) {
+    let numGames = parseInt(match[1], 10);
+    /* eslint no-fallthrough: 0 */
+    switch (match[2] && match[2].toLowerCase()) {
     case 'm': numGames *= 1000;
     case 'k': numGames *= 1000;
+    default:
     }
     numGames = Math.min(1e5, numGames);
     nums.push(numGames);
@@ -27,7 +29,6 @@ function parse(input) {
 }
 
 Median.prototype.handle = function*(client, msg, input) {
-
   debug('Handling median for "%s" games', input);
 
   let nums = parse(input);
@@ -37,8 +38,8 @@ Median.prototype.handle = function*(client, msg, input) {
   }
 
   let result   = yield (nums.map(num => Pg.getGameCrashMedian(num)));
-  nums = nums.map(num => '' + num).join(', ');
-  result = result.map(obj => '' + (obj.median/100) + 'x').join(', ');
+  nums = nums.join(', ');
+  result = result.map(obj => (obj.median / 100) + 'x').join(', ');
 
   let response = 'Median over last ' +
         nums + ' games: ' + result;

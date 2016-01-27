@@ -8,10 +8,9 @@ function Convert() {
 }
 
 Convert.prototype.handle = function*(client, msg, conv) {
-
   debug('Handling conversion "%s"', conv);
   try {
-    conv = conv.replace(/^\s+|\s+$/g,'');
+    conv = conv.replace(/^\s+|\s+$/g, '');
     conv = ConvertParser.parse(conv);
   } catch(err) {
     client.doSay('wow. very usage failure. such retry', msg.channelName);
@@ -28,7 +27,6 @@ Convert.prototype.handle = function*(client, msg, conv) {
     result /= modFactor(conv.tomod);
   } catch(err) {
     client.doSay('wow. such exchange rate fail', msg.channelName);
-    //console.error(err.stack);//TODO: Already throwing the error in the next line
     throw err;
   }
 
@@ -45,28 +43,28 @@ Convert.prototype.handle = function*(client, msg, conv) {
 
   if (result !== 0) {
     /* Scale using the exponent, but not more than 5 integral places. */
-    let e  = Math.min(Math.floor(Math.log(Math.abs(result)) / Math.log(10)),5);
-    result = Math.round(result / Math.pow(10, e-5));
+    let e  = Math.min(Math.floor(Math.log(Math.abs(result)) / Math.LN10), 5);
+    result = Math.round(result / Math.pow(10, e - 5));
     /* Make sure that the exponent is positive during rescaling. */
-    result = e-5 >= 0 ? result * Math.pow(10, e-5) : result / Math.pow(10, 5-e);
-    let prec = Math.max(0, 5-e);
-    if (prec > 15) {
+    result = e - 5 >= 0 ?
+               result * Math.pow(10, e - 5) :
+               result / Math.pow(10, 5 - e);
+    let prec = Math.max(0, 5 - e);
+
+    result = prec > 15 ?
       // Really small number and lots of places to show. Instead of printing
       // them all we rather accept scientific notation. We are already more
       // liberal than the generic toString() conversion.
-      result = '' + result;
-    } else {
-      result = result.toFixed(prec);
-    }
+      String(result) :
+      result.toFixed(prec);
+
     /* Remove unnecessary zeroes. */
-    result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/,'$1');
-  } else {
-    result = '0';
+    result = result.replace(/(\.[0-9]*[1-9])0*$|\.0*$/, '$1');
   }
   const prettyResult = pretty(conv.toiso, result, conv.tomod);
 
   /* Send everything to the chat. */
-  client.doSay(prettySource + " is " + prettyResult, msg.channelName);
+  client.doSay(prettySource + ' is ' + prettyResult, msg.channelName);
 };
 
 /* Pretty print an amount. We try to make it as pretty as
@@ -77,18 +75,18 @@ function pretty(iso, num, mod) {
      only print the ISO code variant.
   */
   if (mod === 'm')
-    return num + " m" + iso;
+    return num + ' m' + iso;
 
   let mod1 = modFactor(mod) === 1;
   switch (iso) {
-  case 'EUR': return "€"   + num + mod;
-  case 'GBP': return "£"   + num + mod;
-  case 'IDR': return "Rp " + num + mod;
-  case 'INR': return "₹"   + num + mod;
-  case 'USD': return "$"   + num + mod;
-  case 'BIT': return num === 1 && mod1 ? "1 Bit" : num + mod + " Bits";
-  case 'SAT': return num + mod + " satoshi";
-  case 'KOINU': return num + mod + " 子犬";
+  case 'EUR': return '€' + num + mod;
+  case 'GBP': return '£' + num + mod;
+  case 'IDR': return 'Rp ' + num + mod;
+  case 'INR': return '₹' + num + mod;
+  case 'USD': return '$' + num + mod;
+  case 'BIT': return num === 1 && mod1 ? '1 Bit' : num + mod + ' Bits';
+  case 'SAT': return num + mod + ' satoshi';
+  case 'KOINU': return num + mod + ' 子犬';
   /* Use suffix symbols for these if no modifier is
    * provided. Otherwise use the ISO code. */
   case 'PLN': return mod1 ? num + 'zł' : num + mod + ' PLN';
@@ -96,12 +94,12 @@ function pretty(iso, num, mod) {
   case 'XAG': return mod1 ? num + ' oz. tr. of silver' : num + mod + ' XAG';
   case 'XAU': return mod1 ? num + ' oz. tr. of gold' : num + mod + ' XAU';
   default:
-    return num + mod + " " + iso;
+    return num + mod + ' ' + iso;
   }
 }
 
 function modFactor(mod) {
-  switch(mod) {
+  switch (mod) {
   case 'm':
     return 1e-3;
   case 'k':

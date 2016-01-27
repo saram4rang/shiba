@@ -4,7 +4,6 @@ const _             =  require('lodash');
 const co            =  require('co');
 const fs            =  require('fs');
 const debug         =  require('debug')('shiba');
-const debugblock    =  require('debug')('shiba:blocknotify');
 const debugautomute =  require('debug')('shiba:automute');
 
 const profanity    =  require('./profanity');
@@ -32,21 +31,21 @@ const mkGameStore     = require('./Store/Game');
 
 // Make sure directories exist for the filesystem log
 function ensureDirSync(dir) {
-  try { fs.mkdirSync(dir); }
-  catch(e) { if (e.code !== 'EEXIST') throw e; }
+  try {
+    fs.mkdirSync(dir);
+  } catch(e) {
+    if (e.code !== 'EEXIST') throw e;
+  }
 }
 ensureDirSync('chatlogs');
-
 
 // Command syntax
 const cmdReg = /^\s*!([a-zA-z]*)\s*(.*)$/i;
 
 function Shiba() {
-
   let self = this;
 
-  co(function*(){
-
+  co(function*() {
     // List of automute regexps
     self.automuteStore = yield* mkAutomuteStore();
     self.chatStore     = yield* mkChatStore();
@@ -78,26 +77,27 @@ function Shiba() {
 
     // Setup the chat bindings.
     self.webClient.on('join', function(data) {
-      co(function*(){
+      co(function*() {
         yield* self.chatStore.mergeMessages(data.history.reverse());
       }).catch(function(err) {
         console.error('Error importing history:', err, err.stack);
       });
     });
     self.webClient.on('msg', function(msg) {
-      co(function*(){
+      co(function*() {
         yield* self.chatStore.addMessage(msg);
       }).catch(err => console.error('[ERROR] onMsg:', err.stack));
     });
     // Setup a handler for new messages added to the store, so that unseen
     // messages during a restart are handled properly.
-    self.chatStore.on('msg', function(msg) {
-      if (msg.type === 'say') {
-        co(function*() {
+    self.chatStore.on('msg', co.wrap(function*(msg) {
+      try {
+        if (msg.type === 'say')
           yield* self.onSay(msg);
-        }).catch(err => console.err('[ERROR] onSay:', err && err.stack || err));
+      } catch(err) {
+        console.err('[Shiba.onMsg]', err && err.stack || err);
       }
-    });
+    }));
 
     self.cmdBlock.setClient(self.webClient);
 
@@ -112,7 +112,7 @@ function Shiba() {
 
 Shiba.prototype.setupScamComment = function() {
   let self = this;
-  self.client.on('game_crash', function(data) {
+  self.client.on('game_crash', function(data) { /* eslint no-unused-vars: 0 */
     let gameInfo = self.client.getGameInfo();
     console.assert(gameInfo.hasOwnProperty('verified'));
 
@@ -135,18 +135,17 @@ Shiba.prototype.setupChatlogWriter = function() {
 
       // Create new write stream for the current date.
       let chatFile =
-        "chatlogs/" + now.getUTCFullYear() +
-        ('0'+(now.getUTCMonth()+1)).slice(-2) +
-        ('0'+now.getUTCDate()).slice(-2) + ".log";
+        'chatlogs/' + now.getUTCFullYear() +
+        ('0' + (now.getUTCMonth() + 1)).slice(-2) +
+        ('0' + now.getUTCDate()).slice(-2) + '.log';
       chatDate   = now;
-      chatStream = fs.createWriteStream(chatFile, {flags:'a'});
+      chatStream = fs.createWriteStream(chatFile, {flags: 'a'});
     }
     chatStream.write(JSON.stringify(msg) + '\n');
   });
 };
 
 Shiba.prototype.checkAutomute = function*(msg) {
-
   // Don't bother checking messages from the spam channel.
   if (msg.channelName === 'spam') return false;
 
@@ -161,7 +160,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
   // TODO: The regular expression could be made more intelligent.
   let urls  = msg.message.match(/https?:\/\/[^\s]+/ig) || [];
   let urls2 = msg.message.match(/(\s|^)(bit.ly|vk.cc|goo.gl)\/[^\s]+/ig) || [];
-  urls2     = urls2.map(x => x.replace(/^\s*/,'http:\/\/'));
+  urls2     = urls2.map(x => x.replace(/^\s*/, 'http:\/\/'));
   urls      = urls.concat(urls2);
 
   // No URLs found.
@@ -196,7 +195,7 @@ Shiba.prototype.checkRate = function*(msg) {
 
   let self = this;
   let rate = rates.find(rate => {
-    let after    = new Date(Date.now() - rate.seconds*1000);
+    let after    = new Date(Date.now() - rate.seconds * 1000);
     let messages = self.chatStore.getChatMessages(msg.username, after);
     return messages.length > rate.count;
   });
@@ -222,11 +221,13 @@ Shiba.prototype.onSay = function*(msg) {
 };
 
 Shiba.prototype.checkCmdRate = function*(msg) {
-  let after    = new Date(Date.now() - 10*1000);
+  let after    = new Date(Date.now() - 10 * 1000);
   let messages = this.chatStore.getChatMessages(msg.username, after);
 
   let count = 0;
-  messages.forEach(m => { if (m.message.match(cmdReg)) ++count; });
+  messages.forEach(m => {
+    if (m.message.match(cmdReg)) ++count;
+  });
 
   if (count >= 5) {
     this.webClient.doMute(msg.username, '5m', msg.channelName);
@@ -240,18 +241,25 @@ Shiba.prototype.checkCmdRate = function*(msg) {
 };
 
 Shiba.prototype.onCmd = function*(msg, cmd, rest) {
+  debug('Handling cmd %s', cmd);
   // Cmd rate limiter
   if (yield* this.checkCmdRate(msg)) return;
 
-  var blacklist = [ 'seen', 'sen', 'sn', 's', 'convert', 'conver', 'conv', 'cv', 'c'
-                  , 'crash', 'cras', 'crsh', 'cra', 'cr', 'bust', 'bst', 'bt'
-		  , 'median', 'med', 'prob', 'prb', 'pob', 'pb', 'p', 'profit', 'prfit'
-		  , 'profi', 'prof', 'prft', 'prf', 'prt', 'streak'
-                  ];
+  var blacklist = [
+    'seen', 'sen', 'sn', 's', 'convert', 'conver', 'conv', 'cv', 'c', 'bust',
+    'bst', 'bt', 'median', 'med', 'prob', 'prb', 'pob', 'pb', 'p', 'profit',
+    'prfit', 'profi', 'prof', 'prft', 'prf', 'prt', 'streak'
+  ];
+
+  // Check if a blacklisted command is used in the english channel.
   if (msg.channelName === 'english' &&
       Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0 &&
       blacklist.indexOf(cmd.toLowerCase()) >= 0) {
-    this.webClient.doSay('@' + msg.username + ' Please use the SPAM channel for that command.', msg.channelName);
+    this.webClient.doSay(
+      '@' + msg.username +
+        ' Please use the SPAM channel for that command.',
+      msg.channelName
+    );
     return;
   }
 
@@ -289,12 +297,6 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'bl':
     yield* this.cmdBlock.handle(this.webClient, msg, rest);
     break;
-  case 'crash':
-  case 'cras':
-  case 'crsh':
-  case 'cra':
-  case 'cr':
-    this.webClient.doSay('@' + msg.username + ' use !bust instead', msg.channelName);
   case 'bust':
   case 'bst':
   case 'bt':
@@ -329,6 +331,7 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'streak':
     yield* this.cmdStreak.handle(this.webClient, msg, rest);
     break;
+  default:
   }
 };
 
@@ -344,10 +347,11 @@ Shiba.prototype.onCmdCustom = function*(msg, rest) {
 
   let customReg   = /^([a-z0-9_\-]+)\s+(.*)$/i;
   let customMatch = rest.match(customReg);
+  let doSay       = text => this.webClient.doSay(text, msg.channelName);
 
   if (!customMatch) {
-    this.webClient.doSay('wow. very usage failure. such retry', msg.channelName);
-    this.webClient.doSay('so example, very cool: !custom Ryan very dog lover', msg.channelName);
+    doSay('wow. very usage failure. such retry');
+    doSay('so example, very cool: !custom Ryan very dog lover');
     return;
   }
 
@@ -356,10 +360,10 @@ Shiba.prototype.onCmdCustom = function*(msg, rest) {
 
   try {
     yield* Pg.putLick(customUser, customMsg, msg.username);
-    this.webClient.doSay('wow. so cool. very obedient', msg.channelName);
+    doSay('wow. so cool. very obedient');
   } catch(err) {
     console.error('[ERROR] onCmdCustom:', err.stack);
-    this.webClient.doSay('wow. such database fail', msg.channelName);
+    doSay('wow. such database fail');
   }
 };
 
@@ -369,8 +373,9 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
   // We're cultivated and don't lick ourselves.
   if (user === this.client.username.toLowerCase()) return;
 
+  let doSay = text => this.webClient.doSay(text, msg.channelName);
   if (profanity[user]) {
-    this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
+    doSay('so trollol. very annoying. such mute');
     this.webClient.doMute(msg.username, '5m', msg.channelName);
     return;
   }
@@ -388,14 +393,14 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
     // standard one.
     let r = Math.random() * (customs.length - 0.8);
     let m = customs[Math.floor(r)];
-    this.webClient.doSay(m, msg.channelName);
+    doSay(m);
   } catch(err) {
     switch (err) {
     case 'USER_DOES_NOT_EXIST':
-      this.webClient.doSay('very stranger. never seen', msg.channelName);
+      doSay('very stranger. never seen');
       break;
     case 'USERNAME_INVALID':
-      this.webClient.doSay('name invalid. you trolling!?', msg.channelName);
+      doSay('name invalid. you trolling!?');
       break;
     default:
       console.error('[ERROR] onCmdLick:', err);
@@ -407,15 +412,16 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
 Shiba.prototype.onCmdSeen = function*(msg, user) {
   user = user.toLowerCase();
 
+  let doSay = text => this.webClient.doSay(text, msg.channelName);
   // Make sure the username is valid
   if (Lib.isInvalidUsername(user)) {
-    this.webClient.doSay('such name. very invalid', msg.channelName);
+    doSay('such name. very invalid');
     return;
   }
 
   // In case a user asks for himself.
   if (user === msg.username.toLowerCase()) {
-    this.webClient.doSay('go find a mirror @' + msg.username, msg.channelName);
+    doSay('go find a mirror @' + msg.username);
     return;
   }
 
@@ -433,12 +439,12 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
 
   // Somebody asks us when we've seen ourselves.
   if (this.client.username && this.client.username.toLowerCase() === user) {
-    this.webClient.doSay('strange loops. much confusion.', msg.channelName);
+    doSay('strange loops. much confusion.');
     return;
   }
 
   if (profanity[user]) {
-    this.webClient.doSay('so trollol. very annoying. such mute', msg.channelName);
+    doSay('so trollol. very annoying. such mute');
     this.webClient.doMute(msg.username, '5m', msg.channelName);
     return;
   }
@@ -447,18 +453,18 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
   try {
     message = yield* Pg.getLastSeen(user);
   } catch(err) {
-    if (err === 'USER_DOES_NOT_EXIST')
-      this.webClient.doSay('very stranger. never seen', msg.channelName);
-    else {
+    if (err === 'USER_DOES_NOT_EXIST') {
+      doSay('very stranger. never seen');
+    } else {
       console.error('[ERROR] onCmdSeen:', err.stack);
-      this.webClient.doSay('wow. such database fail', msg.channelName);
+      doSay('wow. such database fail');
     }
     return;
   }
 
   if (!message.time) {
     // User exists but hasn't said a word.
-    this.webClient.doSay('very silent. never spoken', msg.channelName);
+    doSay('very silent. never spoken');
     return;
   }
 
@@ -471,7 +477,7 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     line += Lib.formatTimeDiff(diff);
     line += ' ago.';
   }
-  this.webClient.doSay(line, msg.channelName);
+  doSay(line);
 };
 
 Shiba.prototype.onCmdConvert = function*(msg, conv) {

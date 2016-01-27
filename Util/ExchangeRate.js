@@ -9,20 +9,21 @@ const Bitstamp   = require('./Bitstamp');
 const Poloniex   = require('./Poloniex');
 const OXR        = require('./OpenExchangeRates');
 
-const ratesCache = new Cache({
-  maxAge: 1000 * 60 * 60, // 1 hour
+const fiatRatesCache = new Cache({
+  // Cache fiat exchange rates for 1 hour.
+  maxAge: 1000 * 60 * 60,
   load: function*() {
     debug('Downloading fiat exchange rates');
     // Oxr free plan only allows USD as the base currency.
     return yield* OXR.getLatest({
       base: 'USD',
-      app_id: Config.OXR_APP_ID
+      appId: Config.OXR_APP_ID
     });
   }
 });
 
 function* getFiatRates() {
-  var data = yield* ratesCache.get('');
+  var data = yield* fiatRatesCache.get('');
   return data.rates;
 }
 
@@ -33,16 +34,15 @@ function* getRates() {
   let rates  = val[0];
   let usdBtc = val[1];
 
-  // Interestingly oxr provides us with a Bitcoin price from the
-  // Coindesk Price Index. However, the oxr free plan only gives
-  // us hourly updated rates. We use the realtime Bitstamp price
-  // to be more up to date in this case.
-  rates.BTC = 1   / usdBtc;
+  // Interestingly oxr provides us with a Bitcoin price from the Coindesk Price
+  // Index. However, the oxr free plan only gives us hourly updated rates. We
+  // use the realtime Bitstamp price to be more up to date in this case.
+  rates.BTC = 1 / usdBtc;
   rates.BIT = 1e6 / usdBtc;
   rates.SAT = 1e8 / usdBtc;
 
   function importpolo(sym) {
-    let ticker = Poloniex.ticker["BTC_" + sym];
+    let ticker = Poloniex.ticker['BTC_' + sym];
     let avg    = (ticker.lowestAsk + ticker.highestBid) / 2;
     rates[sym] = 1 / (usdBtc * avg);
   }
@@ -67,6 +67,6 @@ function* convert(from, to, amount) {
   let rates = yield* getRates();
   fx.rates = rates;
   fx.base  = 'USD';
-  return fx(amount).convert({from:from, to:to});
+  return fx(amount).convert({from: from, to: to});
 }
 exports.convert = convert;

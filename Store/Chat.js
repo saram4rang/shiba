@@ -19,13 +19,14 @@ function ChatStore(store) {
 
 inherits(ChatStore, EventEmitter);
 
-function eqMsg(a,b) {
+function eqMsg(a, b) {
+  /* eslint no-multi-spaces: 0 */
   let res =
-    a.message   == b.message   &&
-    a.moderator == b.moderator &&
-    a.type      == b.type      &&
-    a.username  == b.username  &&
-    new Date(a.date).getTime() ==
+    a.message   === b.message &&
+    a.moderator === b.moderator &&
+    a.type      === b.type &&
+    a.username  === b.username &&
+    new Date(a.date).getTime() ===
     new Date(b.date).getTime();
   return res;
 }
@@ -43,12 +44,11 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
   });
   */
 
-  let self = this;
   let na   = msgs, oa = this.store;
   let m    = [];
   let ni   = 0, oi = 0;
 
-  while (true) {
+  for (;;) {
     if (!(oi < oa.length)) {
       // No more old messages just import the new ones.
       let msgs = na.splice(ni);
@@ -91,7 +91,7 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
       m.push(nm);
       ni++;
       continue;
-    } else if (eqMsg(om,nm)) {
+    } else if (eqMsg(om, nm)) {
       debugv('Merge common message: %s', JSON.stringify(nm));
       m.push(nm);
       oi++;

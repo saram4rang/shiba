@@ -8,9 +8,7 @@ const API     = 'http://openexchangerates.org/api/';
 function* getRates(opts, ep) {
   debug('Fetching openexchangerates');
 
-  // Set base currency for conversion rates.
-  let base  = opts.base || 'USD';
-  let appId = opts.app_id;
+  let appId = opts.appId;
   if (!appId)
     throw new Error('OpenExchangeRate app id needed');
 
@@ -31,8 +29,8 @@ function* getRates(opts, ep) {
 
 exports.getLatest = function*(opts) {
   return yield* getRates(opts, 'latest.json');
-}
+};
 
 exports.getHistorical = function*(opts, date) {
   return yield* getRates(opts, 'historical/' + date + '.json');
-}
+};

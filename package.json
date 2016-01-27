@@ -25,12 +25,12 @@
     "ws": "^1.0.1"
   },
   "devDependencies": {
+    "eslint-config-google": "^0.3.0",
     "jison": "^0.4.16"
   },
   "scripts": {
     "start": "env $(cat .env | xargs) node --use_strict --harmony Shiba.js",
     "start-dev": "env $(cat .env | xargs) nodemon --use_strict --harmony Shiba.js",
-    "import": "env $(cat .env | xargs) node --use_strict --harmony ImportWeb.js",
-    "build": "jison -p lr Convert.jison"
+    "makeparsers": "cd Cmd && for file in *.jison; do jison -p lr \"$file\"; done"
   }
 }

@@ -9,7 +9,6 @@ function Bust() {
 }
 
 Bust.prototype.handle = function*(chatClient, gameClient, msg, input) {
-
   let qry;
   try {
     qry = BustParser.parse(input);
@@ -30,8 +29,12 @@ Bust.prototype.handle = function*(chatClient, gameClient, msg, input) {
   }
 
   // Assume that we have never seen this crashpoint.
-  if(res.length === 0) {
-    chatClient.doSay('wow. such absence. never seen ' + (qry.text || input), msg.channelName);
+  if (res.length === 0) {
+    chatClient.doSay(
+      'wow. such absence. never seen',
+      qry.text || input,
+      msg.channelName
+    );
     return;
   }
 
@@ -41,7 +44,7 @@ Bust.prototype.handle = function*(chatClient, gameClient, msg, input) {
   let info = gameClient.getGameInfo();
   let line =
     'Seen ' + Lib.formatFactorShort(res.game_crash) +
-    ' in #' +  res.id +
+    ' in #' + res.id +
     '. ' + (info.game_id - res.id) +
     ' games ago (' + Lib.formatTimeDiff(diff) +
     ')';

@@ -5,7 +5,7 @@ const EventEmitter =  require('events').EventEmitter;
 const inherits     =  require('util').inherits;
 const co           =  require('co');
 const request      =  require('co-request');
-const SocketIO     =  require('socket.io-client');
+const socketio     =  require('socket.io-client');
 const debug        =  require('debug')('shiba:client');
 const debuggame    =  require('debug')('shiba:game');
 const debuguser    =  require('debug')('shiba:user');
@@ -65,8 +65,8 @@ function Client(config) {
   // Save configuration and stuff.
   this.config = config;
 
-  debug("Setting up connection to %s", config.GAMESERVER);
-  this.socket = SocketIO(config.GAMESERVER, { multiplex: false });
+  debug('Setting up connection to %s', config.GAMESERVER);
+  this.socket = socketio(config.GAMESERVER, {multiplex: false});
   this.socket.on('error', this.onError.bind(this));
   this.socket.on('err', this.onErr.bind(this));
   this.socket.on('connect', this.onConnect.bind(this));
@@ -92,16 +92,17 @@ Client.prototype.onErr = function(err) {
 };
 
 Client.prototype.onConnect = function(data) {
-  debug("Connected.");
+  debug('Connected. Got data: %s', JSON.stringify(data));
 
   let self = this;
   self.emit('connect');
 
   co(function*() {
     let ott = yield* getOtt(self.config);
-    debug("Received one time token: " + ott);
-    debug("Joining the game");
+    debug('Received one time token: ' + ott);
+    debug('Joining the game');
 
+    /* eslint camelcase: 0 */
     self.socket.emit('join', {
       ott: ott,
       api_version: 1
@@ -162,36 +163,37 @@ Client.prototype.onJoin = function(data) {
   let created = data.created = new Date(data.created).getTime();
   _.forEach(data.table_history, function(game) {
     game.created = new Date(game.created).getTime();
-    game.startTime = game.created + 5000; // TODO: move this constant
+    // TODO: move this constant
+    game.startTime = game.created + 5000;
   });
   // TODO: is this also valid for ENDED?
   let startTime = Date.now() - data.elapsed;
 
-  let copy =
-    { state:        data.state,
-      game_id:      data.game_id,
-      created:      created,
-      last_hash:    data.last_hash,
-      elapsed:      data.elapsed,
-      username:     data.username,
-      balance:      data.balance_satoshis
-    };
+  let copy = {
+    state:        data.state,
+    game_id:      data.game_id,
+    created:      created,
+    last_hash:    data.last_hash,
+    elapsed:      data.elapsed,
+    username:     data.username,
+    balance:      data.balance_satoshis
+  };
 
   debug('Resetting client state\n%s', JSON.stringify(copy, null, ' '));
 
   this.lastServerSeed = data.last_hash;
-  this.game =
-    { id:              data.game_id,
-      serverSeedHash:  data.last_hash,
-      created:         created,
-      startTime:       startTime,
-      players:         data.player_info,
-      state:           data.state,
-      // Valid after crashed
-      crashpoint:      null,
-      serverSeed:      null,
-      forced:          null
-    };
+  this.game = {
+    id:              data.game_id,
+    serverSeedHash:  data.last_hash,
+    created:         created,
+    startTime:       startTime,
+    players:         data.player_info,
+    state:           data.state,
+    // Valid after crashed
+    crashpoint:      null,
+    serverSeed:      null,
+    forced:          null
+  };
 
   for (let i = 0; i < data.joined.length; ++i)
     this.game.players[data.joined[i]] = {};
@@ -206,7 +208,7 @@ Client.prototype.onJoin = function(data) {
     this.userState = 'WATCHING';
   else if (players[this.username].stopped_at)
     this.userState = 'CASHEDOUT';
-  else if(data.state === 'ENDED')
+  else if (data.state === 'ENDED')
     this.userState = 'CRASHED';
   else
     this.userState = 'PLAYING';
@@ -223,19 +225,19 @@ Client.prototype.onGameStarting = function(data) {
   */
 
   debuggame('Game #%d starting', data.game_id);
-  this.game =
-    { id:              data.game_id,
-      // The server seed hash is always the seed of the previous games.
-      serverSeedHash:  this.lastServerSeed,
-      created:         Date.now(),
-      startTime:       Date.now() + data.time_till_start,
-      players:         {},
-      state:           'STARTING',
-      // Valid after crashed
-      crashpoint:      null,
-      serverSeed:      null,
-      forced:          null
-    };
+  this.game = {
+    id:              data.game_id,
+    // The server seed hash is always the seed of the previous games.
+    serverSeedHash:  this.lastServerSeed,
+    created:         Date.now(),
+    startTime:       Date.now() + data.time_till_start,
+    players:         {},
+    state:           'STARTING',
+    // Valid after crashed
+    crashpoint:      null,
+    serverSeed:      null,
+    forced:          null
+  };
 
   this.userState = 'WATCHING';
 
@@ -257,7 +259,7 @@ Client.prototype.onGameStarted = function(bets) {
     if (this.game.players.hasOwnProperty(username))
       this.game.players[username].bet = bets[username];
     else
-      this.game.players[username] = { bet: bets[username] };
+      this.game.players[username] = {bet: bets[username]};
   }
 
   if (this.userState === 'PLACED') {
@@ -273,7 +275,10 @@ Client.prototype.onGameStarted = function(bets) {
 };
 
 Client.prototype.onTick = function(elapsed, cashouts) {
-  debugtick('New tick. Cashouts: %d', Object.getOwnPropertyNames(cashouts).length);
+  debugtick(
+    'New tick. Cashouts: %d',
+    Object.getOwnPropertyNames(cashouts).length
+  );
 
   var self = this;
   _.forEach(cashouts, (stoppedAt, username) => {
@@ -290,14 +295,13 @@ Client.prototype.onGameTick = function(elapsed) {
   // Print verbose tick information
   let at   = Lib.growthFunc(elapsed);
   let line = Lib.formatFactor(at);
-  line = line + " elapsed " + elapsed;
+  line = line + ' elapsed ' + elapsed;
 
   debugtick('Tick ' + line);
   this.emit('game_tick', elapsed);
 };
 
 Client.prototype.onGameCrash = function(data) {
-
   /* Example:
        { "forced":false,
          "elapsed":0,
@@ -318,16 +322,15 @@ Client.prototype.onGameCrash = function(data) {
   this.game.state      = 'ENDED';
 
   // Perform the last second cashouts
-  var self = this;
   _.forEach(data.cashouts, (stoppedAt, username) => {
-    self.onCashedOut({username: username, stopped_at: stoppedAt});
+    this.onCashedOut({username: username, stopped_at: stoppedAt});
   });
 
   // Add the bonus to each user that wins it
-  for (let playerName in data.bonuses) {
+  _.forEach(data.bonuses, (bonus, playerName) => {
     console.assert(this.game.players[playerName]);
-    this.game.players[playerName].bonus = data.bonuses[playerName];
-  }
+    this.game.players[playerName].bonus = bonus;
+  });
 
   if (this.userState === 'PLAYING' ||
       this.state === 'CASHINGOUT') {
@@ -341,7 +344,7 @@ Client.prototype.onGameCrash = function(data) {
 };
 
 Client.prototype.onBets = function(data) {
-  debug('%s New bets. Bets: %d', "" + this.timeTillStart(), data.length >> 1);
+  debug('%d New bets. Bets: %d', this.timeTillStart(), data.length >> 1);
   this.emit('bets', data);
 
   for (var i = 0; i < data.length;) {
@@ -428,15 +431,15 @@ Client.prototype.getPlayers = function() {
 };
 
 Client.prototype.getGameInfo = function() {
-  let gameInfo =
-    { elapsed:          Date.now() - this.game.startTime,
-      game_id:          this.game.id,
-      server_seed_hash: this.game.serverSeedHash,
-      player_info:      this.game.players,
-      state:            this.game.state,
-      created:          this.game.created,
-      startTime:        this.game.startTime
-    };
+  let gameInfo = {
+    elapsed:          Date.now() - this.game.startTime,
+    game_id:          this.game.id,
+    server_seed_hash: this.game.serverSeedHash,
+    player_info:      this.game.players,
+    state:            this.game.state,
+    created:          this.game.created,
+    startTime:        this.game.startTime
+  };
 
   if (this.game.state === 'ENDED') {
     let cp   = Lib.crashPoint(this.game.serverSeed);
@@ -449,7 +452,7 @@ Client.prototype.getGameInfo = function() {
     // is imprecise. Above 1,000,000x we allow the crashpoint to differ by
     // 0.08x, below it must be equal.
     gameInfo.verified    =
-      diff === 0 || cp > 1e6 && diff < 0.08 ? "ok" : "scam";
+      diff === 0 || cp > 1e6 && diff < 0.08 ? 'ok' : 'scam';
   }
 
   return gameInfo;
@@ -459,13 +462,13 @@ Client.prototype.getGameInfo = function() {
 function* getOtt(config) {
   if (!config.SESSION) return null;
 
-  debug("Requesting one time token for session: %s", config.SESSION);
+  debug('Requesting one time token for session: %s', config.SESSION);
 
   let cookie = request.cookie('id=' + config.SESSION);
   let url    = config.WEBSERVER + '/ott';
   let jar    = request.jar();
   jar.setCookie(cookie, url);
 
-  let res = yield request.post({url:url, jar:jar});
+  let res = yield request.post({url: url, jar: jar});
   return res.body;
 }

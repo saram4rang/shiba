@@ -57,7 +57,7 @@ Blockchain.prototype.onOpen = function() {
   this.emit('connect');
 };
 
-
+/* eslint no-unused-vars: 0 */
 Blockchain.prototype.onMessage = function(message, flags) {
   try {
     let data = JSON.parse(message);
@@ -71,9 +71,14 @@ Blockchain.prototype.onMessage = function(message, flags) {
       debug('New block #%d, time %d.', data.x.height, data.x.time);
       this.emit('block', data.x);
       break;
+    default:
+      console.error(
+        '[BlockChain.onMessage]',
+        'Unknown message op:', data.op
+      );
     }
   } catch (e) {
-    console.error("Error while decoding message:", e.message);
+    console.error('Error while decoding message:', e.message);
     console.error(e.stack);
   }
 
@@ -101,7 +106,6 @@ Blockchain.prototype.resetPingTimer = function() {
     setTimeout(this.onPingInterval.bind(this),
                this.pingInterval);
 };
-
 
 Blockchain.prototype.onPingInterval = function() {
   debugv('Ping interval. Sending ping. Timeout: %d ms.', this.pingTimeout);

@@ -38,11 +38,10 @@ GameStore.prototype.addGame = function*(game) {
 };
 
 function* getGameInfo(id) {
-
   let url = Config.WEBSERVER + '/game/' + id + '.json';
   let res = yield request(url);
 
-  if (res.statusCode != 200)
+  if (res.statusCode !== 200)
     throw 'INVALID_STATUSCODE';
 
   return JSON.parse(res.body);
@@ -59,7 +58,8 @@ GameStore.prototype.importGame = function*(id) {
   }
 
   info.created = new Date(info.created).getTime();
-  info.startTime = info.created + 5000; // TODO: move this constant
+  // TODO: move this constant
+  info.startTime = info.created + 5000;
 
   try {
     yield* Pg.putGame(info);
@@ -67,18 +67,19 @@ GameStore.prototype.importGame = function*(id) {
     console.error('Importing game #' + info.game_id, 'failed');
     throw err;
   }
-}
+};
 
 GameStore.prototype.fillMissing = function*(data) {
   debug('Checking for missing games before: %d', data.game_id);
 
-  let maxGameId = data.state === 'ENDED'? data.game_id : data.game_id - 1;
+  let maxGameId = data.state === 'ENDED' ? data.game_id : data.game_id - 1;
 
   // Get ids of missing games. TODO: move this constants
   let ids = yield* Pg.getMissingGames(2280000, maxGameId);
 
   // Import them from the web.
   for (let id of ids) {
+    debug('Importing missing id: %d', id);
     try {
       yield* this.importGame(id);
       yield wait(200);

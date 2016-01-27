@@ -11,12 +11,11 @@ function Streak() {
 }
 
 Streak.prototype.handle = function*(client, msg, input) {
-
   debug('Handling streak: %s', JSON.stringify(input));
 
   let streak;
   try {
-    streak = StreakParser.parse(input.replace(/^\s+|\s+$/g,''));
+    streak = StreakParser.parse(input.replace(/^\s+|\s+$/g, ''));
   } catch(err) {
     client.doSay('wow. very usage failure. such retry', msg.channelName);
     throw err;
@@ -39,9 +38,9 @@ Streak.prototype.handle = function*(client, msg, input) {
 
   let numGames = result.length;
   let begin = result[0].game_id;
-  let end = result[numGames-1].game_id;
+  let end = result[numGames - 1].game_id;
   let crashes = result
-                  .slice(0,MAX_NUM_GAMES)
+                  .slice(0, MAX_NUM_GAMES)
                   .map(game => Lib.formatFactor(game.game_crash) + 'x')
                   .join(', ');
   let response =

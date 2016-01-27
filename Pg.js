@@ -1,5 +1,6 @@
 'use strict';
 
+const _        = require('lodash');
 const assert   = require('assert');
 const pg       = require('co-pg')(require('pg'));
 const debug    = require('debug')('shiba:db');
@@ -12,15 +13,16 @@ const Lib    = require('./Lib');
 pg.defaults.poolSize        = 3;
 pg.defaults.poolIdleTimeout = 500000;
 
-pg.types.setTypeParser(20, function(val) { // parse int8 as an integer
-  return val === null ? null : parseInt(val);
-});
+// Parse int8 as an integer
+pg.types.setTypeParser(20, val =>
+  val === null ? null : parseInt(val, 10)
+);
 
 let querySeq = 0;
 function *query(sql, params) {
   let qid = querySeq++;
   debugpg("[%d] Executing query '%s'", qid, sql);
-  if (params) debugpg("[%d] Parameters %s", qid, JSON.stringify(params));
+  if (params) debugpg('[%d] Parameters %s', qid, JSON.stringify(params));
 
   let vals   = yield pg.connectPromise(Config.DATABASE);
   let client = vals[0];
@@ -28,8 +30,14 @@ function *query(sql, params) {
 
   try {
     let result = yield client.queryPromise(sql, params);
-    debugpg("[%d] Finished query", qid);
+    debugpg('[%d] Finished query', qid);
     return result;
+  } catch(err) {
+    // console.error('Query [%d] failed with %s', qid, err.toString());
+    // console.error('Parameters: ', params);
+    // console.error('Statement:');
+    // console.error(sql);
+    throw err;
   } finally {
     // Release client back to pool
     done();
@@ -41,23 +49,23 @@ exports.query = query;
  * Runs a session and retries if it deadlocks.
  *
  * @param {String} runner A generator expecting a query function.
- * @return Session result.
+ * @return {?} Session result.
  * @api private
  */
 function* withClient(runner) {
-
   let vals   = yield pg.connectPromise(Config.DATABASE);
   let client = vals[0];
   let done   = vals[1];
 
   let query =
-        function*(sql,params) {
+        function*(sql, params) {
           let qid = querySeq++;
           debugpg("[%d] Executing query '%s'", qid, sql);
-          if (params) debugpg("[%d] Parameters %s", qid, JSON.stringify(params));
+          if (params)
+            debugpg('[%d] Parameters %s', qid, JSON.stringify(params));
 
           let result = yield client.queryPromise(sql, params);
-          debugpg("[%d] Finished query", qid);
+          debugpg('[%d] Finished query', qid);
           return result;
         };
 
@@ -66,22 +74,23 @@ function* withClient(runner) {
     done();
     return result;
   } catch (ex) {
-    if (ex.code === '40P01') { // Deadlock
+    // Check for deadlocks.
+    if (ex.code === '40P01') {
       console.warn('Deadlock detected. Retrying..');
       done();
-      return yield* withClient(runner);
-    }
-
-    console.error(ex);
-    console.error(ex.stack);
-
-    if (ex.removeFromPool) {
-      console.error('[ERROR] withClient: removing connection from pool');
-      done(new Error('Removing connection from pool'));
+      yield* withClient(runner);
     } else {
-      done();
+      console.error(ex);
+      console.error(ex.stack);
+
+      if (ex.removeFromPool) {
+        console.error('[ERROR] withClient: removing connection from pool');
+        done(new Error('Removing connection from pool'));
+      } else {
+        done();
+      }
+      throw ex;
     }
-    throw ex;
   }
 }
 
@@ -93,11 +102,10 @@ let txSeq = 0;
  * perform these queries itself.
  *
  * @param {String} runner A generator expecting a query function.
- * @return Transaction result.
+ * @return {?} Transaction result.
  * @api private
  */
 function* withTransaction(runner) {
-
   return yield* withClient(function*(query) {
     let txid = txSeq++;
     try {
@@ -156,17 +164,17 @@ function* getExistingUser(username) {
 
   let data = yield* query(sql, par);
 
-  if (data.rows.length > 0) {
-    // User exists. Return the first (and only) row.
-    assert(data.rows.length === 1);
-    return data.rows[0];
-  } else {
+  if (data.rows.length <= 0)
     throw 'USER_DOES_NOT_EXIST';
-  }
+
+  // User exists. Return the first (and only) row.
+  assert(data.rows.length === 1);
+  return data.rows[0];
 }
 
 const userCache = new Cache({
-  maxAge: 1000 * 60 * 10, // 10 minutes
+  // Cache users for 30 minutes.
+  maxAge: 1000 * 60 * 30,
   load : getOrCreateUser
 });
 
@@ -196,7 +204,9 @@ exports.putChat = function*(username, channelName, message, isBot, timestamp) {
   debug('Recording chat message. User: ' + username);
   let user = yield* getUser(username);
 
-  let sql = 'INSERT INTO chats(user_id, channel, message, is_bot, created) VALUES ($1, $2, $3, $4, $5)';
+  let sql =
+    `INSERT INTO chats(user_id, channel, message, is_bot, created)
+     VALUES ($1, $2, $3, $4, $5)`;
   let par = [user.id, channelName, message, isBot, timestamp];
   try {
     yield* query(sql, par);
@@ -219,19 +229,18 @@ CREATE TABLE mutes (
   created timestamp with time zone DEFAULT now() NOT NULL
 );
 */
-exports.putMute = function*(username, moderatorname, timespec, shadow, timestamp) {
+exports.putMute = function*(username, moderator, timespec, shadow, timestamp) {
   debug('Recording mute message.' +
         ' User: ' + username + '.' +
-        ' Moderator: ' + moderatorname);
+        ' Moderator: ' + moderator);
 
-  let vals = yield [username,moderatorname].map(getUser),
-      usr  = vals[0],
-      mod  = vals[1],
-      sql  =
-        'INSERT INTO ' +
-        'mutes(user_id, moderator_id, timespec, shadow, created) ' +
-        'VALUES ($1, $2, $3, $4, $5)',
-      par  = [usr.id, mod.id, timespec, shadow, timestamp];
+  let vals = yield [username, moderator].map(getUser);
+  let usr  = vals[0];
+  let mod  = vals[1];
+  let sql  =
+    `INSERT INTO mutes(user_id, moderator_id, timespec, shadow, created)
+     VALUES ($1, $2, $3, $4, $5)`;
+  let par  = [usr.id, mod.id, timespec, shadow, timestamp];
   yield* query(sql, par);
 };
 
@@ -240,7 +249,7 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
         ' User: ' + username + '.' +
         ' Moderator: ' + moderatorname);
 
-  let vals = yield [username,moderatorname].map(getUser);
+  let vals = yield [username, moderatorname].map(getUser);
   let usr  = vals[0];
   let mod  = vals[1];
 
@@ -253,7 +262,7 @@ exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
 };
 
 exports.putMsg = function*(msg) {
-  switch(msg.type) {
+  switch (msg.type) {
   case 'say':
     yield* this.putChat(
       msg.username,
@@ -285,45 +294,45 @@ exports.getLastMessages = function*() {
   debug('Retrieving last chat messages');
 
   let sql1 =
-    "SELECT\
-       chats.created AS date,\
-       'say' AS type,\
-       username,\
-       message\
-     FROM chats\
-     JOIN users ON chats.user_id = users.id\
-     ORDER BY date DESC\
-     LIMIT $1";
+    `SELECT
+       chats.created AS date,
+       'say' AS type,
+       username,
+       message
+     FROM chats
+     JOIN users ON chats.user_id = users.id
+     ORDER BY date DESC
+     LIMIT $1`;
   let sql2 =
-    "SELECT\
-       mutes.created AS date,\
-       'mute' AS type,\
-       m.username AS moderator,\
-       u.username,\
-       timespec,\
-       shadow\
-     FROM mutes\
-     JOIN users AS m ON mutes.moderator_id = m.id\
-     JOIN users AS u ON mutes.user_id = u.id\
-     ORDER BY date DESC\
-     LIMIT $1";
+    `SELECT
+       mutes.created AS date,
+       'mute' AS type,
+       m.username AS moderator,
+       u.username,
+       timespec,
+       shadow
+     FROM mutes
+     JOIN users AS m ON mutes.moderator_id = m.id
+     JOIN users AS u ON mutes.user_id = u.id
+     ORDER BY date DESC
+     LIMIT $1`;
   let sql3 =
-    "SELECT\
-       unmutes.created AS date,\
-       'unmute' AS type,\
-       m.username AS moderator,\
-       u.username,\
-       shadow\
-     FROM unmutes\
-     JOIN users AS m ON unmutes.moderator_id = m.id\
-     JOIN users AS u ON unmutes.user_id = u.id\
-     ORDER BY date DESC\
-     LIMIT $1";
+    `SELECT
+       unmutes.created AS date,
+       'unmute' AS type,
+       m.username AS moderator,
+       u.username,
+       shadow
+     FROM unmutes
+     JOIN users AS m ON unmutes.moderator_id = m.id
+     JOIN users AS u ON unmutes.user_id = u.id
+     ORDER BY date DESC
+     LIMIT $1`;
   let par = [Config.CHAT_HISTORY];
 
-  let res = yield [sql1,sql2,sql3].map(sql => query(sql,par));
-  res = res[0].rows.concat(res[1].rows,res[2].rows);
-  res = res.sort((a,b) => new Date(a.date) - new Date(b.date));
+  let res = yield [sql1, sql2, sql3].map(sql => query(sql, par));
+  res = res[0].rows.concat(res[1].rows, res[2].rows);
+  res = res.sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return res;
 };
@@ -334,8 +343,9 @@ exports.putGame = function*(info) {
   // Step1: Resolve all player names.
   let users   = yield players.map(getUser);
   let userIds = {};
-  for (let i in users)
-    userIds[users[i].username] = users[i].id;
+  _.forEach(users, function(user) {
+    userIds[user.username] = user.id;
+  });
 
   // Insert into the games and plays table in a common transaction.
   debug('Recording info for game #' + info.game_id);
@@ -343,16 +353,16 @@ exports.putGame = function*(info) {
     debugpg('Inserting game data for game #' + info.game_id);
 
     let sql =
-      'INSERT INTO ' +
-      'games(id, game_crash, seed, created, started) ' +
-      'VALUES ($1, $2, $3, $4, $5)';
-    let par =
-      [ info.game_id,
-        info.game_crash,
-        info.server_seed || info.hash,
-        new Date(info.created),
-        new Date(info.startTime)
-      ];
+      `INSERT INTO
+       games(id, game_crash, seed, created, started)
+       VALUES ($1, $2, $3, $4, $5)`;
+    let par = [
+      info.game_id,
+      info.game_crash,
+      info.server_seed || info.hash,
+      new Date(info.created),
+      new Date(info.startTime)
+    ];
     yield* query(sql, par);
 
     for (let player of players) {
@@ -360,17 +370,16 @@ exports.putGame = function*(info) {
 
       let play = info.player_info[player];
       let sql =
-        'INSERT INTO ' +
-        'plays(user_id, cash_out, game_id, bet, bonus, joined) ' +
-        'VALUES ($1, $2, $3, $4, $5, $6)';
-      let par =
-        [ userIds[player],
-          play.stopped_at ? Math.round(play.bet * play.stopped_at / 100) : null,
-          info.game_id,
-          play.bet,
-          play.bonus || null,
-          play.joined || null
-        ];
+        `INSERT INTO plays(user_id, cash_out, game_id, bet, bonus, joined)
+         VALUES ($1, $2, $3, $4, $5, $6)`;
+      let par = [
+        userIds[player],
+        play.stopped_at ? Math.round(play.bet * play.stopped_at / 100) : null,
+        info.game_id,
+        play.bet,
+        play.bonus || null,
+        play.joined || null
+      ];
 
       yield* query(sql, par);
     }
@@ -389,7 +398,7 @@ CREATE TABLE licks (
 exports.putLick = function*(username, message, creatorname) {
   debug('Recording custom lick message for user: ' + username);
 
-  let vals    = yield [username,creatorname].map(getUser);
+  let vals    = yield [username, creatorname].map(getUser);
   let user    = vals[0];
   let creator = vals[1];
 
@@ -405,18 +414,13 @@ exports.getLastGames = function*() {
   debug('Retrieving last games');
 
   let sql =
-    'WITH t AS (SELECT\
-                  id AS game_id,\
-                  game_crash,\
-                  created,\
-                  seed AS hash\
-                FROM games\
-                ORDER BY id\
-                DESC LIMIT $1)\
-     SELECT * FROM t ORDER BY game_id';
+    `WITH t AS
+       (SELECT id AS game_id, game_crash, created, seed AS hash
+        FROM games ORDER BY id DESC LIMIT $1)
+       SELECT * FROM t ORDER BY game_id`;
   let par = [Config.GAME_HISTORY];
 
-  let data = yield* query(sql,par);
+  let data = yield* query(sql, par);
   return data.rows;
 };
 
@@ -441,8 +445,10 @@ exports.getBust = function*(qry) {
           '   ORDER BY game_crash DESC LIMIT 1)';
     par = [];
   } else {
-    let min   = qry.hasOwnProperty('min') ? ' AND game_crash >= ' + qry.min : '';
-    let max   = qry.hasOwnProperty('max') ? ' AND game_crash <= ' + qry.max : '';
+    let min   = qry.hasOwnProperty('min') ?
+                  ' AND game_crash >= ' + qry.min : '';
+    let max   = qry.hasOwnProperty('max') ?
+                  ' AND game_crash <= ' + qry.max : '';
     let range = 'TRUE' + min + max;
     sql = 'SELECT * FROM games WHERE id =' +
           ' (SELECT id FROM game_crashes' +
@@ -503,17 +509,16 @@ exports.getLastSeen = function*(username) {
   let par  = [user.id];
   let data = yield* query(sql, par);
 
-  if (data.rows.length > 0) {
+  return data.rows.length > 0 ?
     // Return the first (and only) row.
-    assert(data.rows.length === 1);
-    return {
+    {
       username: user.username,
       time:     new Date(data.rows[0].created)
-    };
-  } else {
+    } :
     // User never said anything.
-    return {username: user.username};
-  }
+    {
+      username: user.username
+    };
 };
 
 exports.getLatestBlock = function*() {
@@ -542,21 +547,26 @@ exports.putBlock = function*(block) {
 
 exports.getBlockNotifications = function*() {
   debug('Getting block notification list');
-  let sql = 'SELECT channel_name, array_agg(username) AS users FROM blocknotifications GROUP BY channel_name';
+  let sql = `SELECT channel_name, array_agg(username) AS users
+             FROM blocknotifications GROUP BY channel_name`;
 
   let par  = [];
   let data = yield* query(sql, par);
 
   let map = new Map();
-  data.rows.forEach(function(val, index) {
-    map.set(val['channel_name'], val['users']);
+  data.rows.forEach(function(val) {
+    map.set(val.channel_name, val.users);
   });
   return map;
 };
 
 exports.putBlockNotification = function*(username, channelName) {
-  debug('Adding %s to block notification list on channel %s', username, channelName);
-  let sql = 'INSERT INTO blocknotifications(username, channel_name) VALUES($1, $2)';
+  debug(
+    'Adding %s to block notification list on channel %s',
+    username, channelName
+  );
+  let sql = `INSERT INTO blocknotifications(username, channel_name)
+             VALUES($1, $2)`;
   let par = [username, channelName];
 
   try {
@@ -578,10 +588,10 @@ exports.getGameCrashMedian = function*(numGames) {
   debug('Retrieving game crash median');
 
   let sql =
-    'WITH t AS (SELECT game_crash FROM games ORDER BY id DESC LIMIT $1)\
-       SELECT percentile_cont(0.5)\
-       WITHIN GROUP (ORDER BY game_crash) AS median, COUNT(*)\
-       FROM t';
+    `WITH t AS (SELECT game_crash FROM games ORDER BY id DESC LIMIT $1)
+       SELECT percentile_cont(0.5)
+       WITHIN GROUP (ORDER BY game_crash) AS median, COUNT(*)
+       FROM t`;
   let par = [numGames];
   let data = yield* query(sql, par);
 
@@ -592,24 +602,28 @@ exports.getLastStreak = function*(count, op, bound) {
   debug('Retrieving last streak');
 
   let sql =
-    'WITH\
-       t1 AS\
-         (SELECT id, CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1 THEN id END AS id_start\
-            FROM games\
-            WHERE game_crash ' + op + ' $1),\
-       t2 AS\
-         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group\
-            FROM t1),\
-       best AS\
-         (SELECT id_group, COUNT(*)\
-            FROM t2\
-            GROUP BY id_group\
-            HAVING count(*) >= $2\
-            ORDER BY id_group DESC LIMIT 1)\
-     SELECT id game_id, game_crash game_crash\
-     FROM games, best\
-     WHERE id >= best.id_group AND id < best.id_group + best.count\
-     ORDER BY id';
+    `WITH
+       t1 AS
+         (SELECT
+            id,
+            CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1
+              THEN id
+            END AS id_start
+          FROM games
+          WHERE game_crash ' + op + ' $1),
+       t2 AS
+         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
+          FROM t1),
+       best AS
+         (SELECT id_group, COUNT(*)
+          FROM t2
+          GROUP BY id_group
+          HAVING count(*) >= $2
+          ORDER BY id_group DESC LIMIT 1)
+     SELECT id game_id, game_crash game_crash
+     FROM games, best
+     WHERE id >= best.id_group AND id < best.id_group + best.count
+     ORDER BY id`;
 
   let par = [bound, count];
   let data = yield* query(sql, par);
@@ -621,23 +635,27 @@ exports.getMaxStreak = function*(op, bound) {
   debug('Retrieving max streak');
 
   let sql =
-    'WITH\
-       t1 AS\
-         (SELECT id, CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1 THEN id END AS id_start\
-            FROM games\
-            WHERE game_crash ' + op + ' $1),\
-       t2 AS\
-         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group\
-            FROM t1),\
-       best AS\
-         (SELECT id_group, COUNT(*) AS count\
-            FROM t2\
-            GROUP BY id_group\
-            ORDER BY count DESC LIMIT 1)\
-     SELECT id game_id, game_crash game_crash\
-     FROM games, best\
-     WHERE id >= best.id_group AND id < best.id_group + best.count\
-     ORDER BY id';
+    `WITH
+       t1 AS
+         (SELECT
+            id,
+            CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1
+              THEN id
+            END AS id_start
+          FROM games
+          WHERE game_crash ' + op + ' $1),
+       t2 AS
+         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
+          FROM t1),
+       best AS
+         (SELECT id_group, COUNT(*) AS count
+          FROM t2
+          GROUP BY id_group
+          ORDER BY count DESC LIMIT 1)
+     SELECT id game_id, game_crash game_crash
+     FROM games, best
+     WHERE id >= best.id_group AND id < best.id_group + best.count
+     ORDER BY id`;
   let par = [bound];
   let data = yield* query(sql, par);
 

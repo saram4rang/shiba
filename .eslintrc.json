@@ -1,0 +1,23 @@
+{
+    "extends": "google",
+    "env": {
+        "node": true
+    },
+    "rules": {
+        "require-jsdoc": 0,
+        "generator-star-spacing": 0,
+        "curly": [2, "multi", "consistent"],
+        "no-multi-spaces": [2, {
+            "exceptions": {
+                "AssignmentExpression": true,
+                "VariableDeclarator": true
+            }
+        }],
+        "quotes": [2, "single", "avoid-escape"],
+        "indent": [2, 2, {"SwitchCase": 0}],
+        "key-spacing": [2, {"mode": "minimum"}],
+        "one-var": 0,
+        "no-throw-literal": 0,
+        "space-after-keywords": 0
+    }
+}

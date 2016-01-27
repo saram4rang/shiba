@@ -6,21 +6,23 @@ function Automute(store) {
   this.store = store;
 }
 
-Automute.prototype.handle = function*(client, msg, input) {
-
+Automute.prototype.handle = function *(client, msg, input) {
   if (msg.role !== 'admin' &&
       msg.role !== 'moderator') return;
 
+  debug('Parsing regex: %s', input);
   let regex;
   try {
     let match = input.match(/^\/(.*)\/([gi]*)$/);
     regex = new RegExp(match[1], match[2]);
-  } catch(err) {
+  } catch (err) {
+    debug('Parse failed');
     client.doSay('regex compile file: ' + err.message, msg.channelName);
     return;
   }
 
   try {
+    debug('Adding automute to DB');
     yield* this.store.add(msg.username, regex);
   } catch(err) {
     client.doSay('failed adding automute to database.', msg.channelName);
