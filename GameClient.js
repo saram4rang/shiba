@@ -91,8 +91,8 @@ Client.prototype.onErr = function(err) {
   console.error('onErr: ', err);
 };
 
-Client.prototype.onConnect = function(data) {
-  debug('Connected. Got data: %s', JSON.stringify(data));
+Client.prototype.onConnect = function(connectData) {
+  debug('Connected. Got data: %s', JSON.stringify(connectData));
 
   let self = this;
   self.emit('connect');
@@ -106,11 +106,11 @@ Client.prototype.onConnect = function(data) {
     self.socket.emit('join', {
       ott: ott,
       api_version: 1
-    }, function(err, data) {
+    }, function(err, joinData) {
       if (err)
         console.error('[ERROR] onConnect:', err);
       else
-        self.onJoin(data);
+        self.onJoin(joinData);
     });
   }).catch(err => console.error('[ERROR] onConnect', err));
 };

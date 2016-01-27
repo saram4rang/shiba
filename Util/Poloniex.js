@@ -3,13 +3,13 @@
 const autobahn = require('autobahn');
 const _        = require('lodash');
 const debug    = require('debug')('verbose:poloniex');
+const Polo     = require('poloniex.js');
 
 const ticker = {};
 exports.ticker = ticker;
 
 /* Pull API to get the initial ticker upon startup. */
 (function() {
-  const Polo = require('poloniex.js');
   const polo = new Polo();
   polo.getTicker(function(err, pairs) {
     if (err) {

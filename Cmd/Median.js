@@ -7,10 +7,11 @@ function Median() {
 }
 
 function parse(input) {
+  var rest = input;
   var nums = [];
 
   for (;;) {
-    let match = input.match(/^([0-9]+)(k|m)?(,\s*|\s+)?(.*)?/i);
+    let match = rest.match(/^([0-9]+)(k|m)?(,\s*|\s+)?(.*)?/i);
     if (!match)
       return nums;
 
@@ -24,7 +25,7 @@ function parse(input) {
     numGames = Math.min(1e5, numGames);
     nums.push(numGames);
 
-    input = match[4] || '';
+    rest = match[4] || '';
   }
 }
 
@@ -39,7 +40,7 @@ Median.prototype.handle = function*(client, msg, input) {
 
   let result   = yield (nums.map(num => Pg.getGameCrashMedian(num)));
   nums = nums.join(', ');
-  result = result.map(obj => (obj.median / 100) + 'x').join(', ');
+  result = result.map(obj => obj.median / 100 + 'x').join(', ');
 
   let response = 'Median over last ' +
         nums + ' games: ' + result;

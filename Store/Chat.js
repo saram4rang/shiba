@@ -44,20 +44,23 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
   });
   */
 
-  let na   = msgs, oa = this.store;
-  let m    = [];
-  let ni   = 0, oi = 0;
+  let na = msgs, oa = this.store;
+  let m  = [];
+  let ni = 0, oi = 0;
 
   for (;;) {
     if (!(oi < oa.length)) {
       // No more old messages just import the new ones.
-      let msgs = na.splice(ni);
-      if (msgs.length > 0)
-        debug('Importing new messages: %s', JSON.stringify(msgs, null, ' '));
+      let newMsgs = na.splice(ni);
+      if (newMsgs.length > 0)
+        debug(
+          'Importing new messages: %s',
+          JSON.stringify(newMsgs, null, ' ')
+        );
 
       this.store = m;
-      for (let msg of msgs)
-        yield* this.addMessage(msg);
+      for (let newMsg of newMsgs)
+        yield* this.addMessage(newMsg);
       return;
     }
 
@@ -66,9 +69,9 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
       // merging. Under normal circumstances this should be impossible, but
       // recently mute messages are not retained by the server and in the future
       // message might be deleted.
-      let msgs = oa.splice(oi);
-      console.warn('[ERROR] Stray old messages:', msgs, na, oa);
-      this.store = m.concat(msgs);
+      let oldMsgs = oa.splice(oi);
+      console.warn('[ERROR] Stray old messages:', oldMsgs, na, oa);
+      this.store = m.concat(oldMsgs);
       return;
     }
 

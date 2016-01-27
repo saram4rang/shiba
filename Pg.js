@@ -57,7 +57,7 @@ function* withClient(runner) {
   let client = vals[0];
   let done   = vals[1];
 
-  let query =
+  let queryGen =
         function*(sql, params) {
           let qid = querySeq++;
           debugpg("[%d] Executing query '%s'", qid, sql);
@@ -70,7 +70,7 @@ function* withClient(runner) {
         };
 
   try {
-    let result = yield* runner(query);
+    let result = yield* runner(queryGen);
     done();
     return result;
   } catch (ex) {
@@ -467,12 +467,11 @@ exports.getBust = function*(qry) {
 };
 
 exports.addAutomute = function*(creator, regex) {
-  regex = regex.toString();
   debug('Adding automute ' + regex);
 
   let user = yield* getUser(creator);
   let sql  = 'INSERT INTO automutes(creator_id, regexp) VALUES($1, $2)';
-  let par  = [user.id, regex];
+  let par  = [user.id, regex.toString()];
 
   try {
     yield* query(sql, par);

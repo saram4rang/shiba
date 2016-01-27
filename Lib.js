@@ -62,12 +62,12 @@ module.exports = {
       return (f / 100).toFixed(2);
     },
   formatFactorShort:
-    function(f) {
-      if (f === 0) return '0';
+    function(factor) {
+      if (factor === 0) return '0';
 
-      // Scale the f upfront. We could do that later to preserve
+      // Scale the factor upfront. We could do that later to preserve
       // precision, but the code is obfuscated enough already.
-      f /= 100;
+      let f = factor / 100;
 
       // Calculate the exponent that would be used in scientific
       // notation. We apply some selective rounding to overcome

@@ -7,10 +7,11 @@ const ExchangeRate  = require('../Util/ExchangeRate');
 function Convert() {
 }
 
-Convert.prototype.handle = function*(client, msg, conv) {
-  debug('Handling conversion "%s"', conv);
+Convert.prototype.handle = function*(client, msg, input) {
+  debug('Handling conversion "%s"', input);
+  let conv;
   try {
-    conv = conv.replace(/^\s+|\s+$/g, '');
+    conv = input.replace(/^\s+|\s+$/g, '');
     conv = ConvertParser.parse(conv);
   } catch(err) {
     client.doSay('wow. very usage failure. such retry', msg.channelName);
@@ -70,7 +71,7 @@ Convert.prototype.handle = function*(client, msg, conv) {
 /* Pretty print an amount. We try to make it as pretty as
    possible by replacing ISO codes with currency symbols.
 */
-function pretty(iso, num, mod) {
+function pretty(iso, num, mod) { /* eslint complexity: 0 */
   /* In case somebody specifically asked for milli we
      only print the ISO code variant.
   */

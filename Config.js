@@ -1,8 +1,11 @@
 
+let packageJson = require('./package.json');
+
+/* eslint no-process-env: 0 */
 module.exports =
 {
   ENV:            process.env.NODE_ENV || 'development',
-  VERSION:        require('./package.json').version,
+  VERSION:        packageJson.version,
   CLIENT_SEED:
     process.env.BUSTABIT_CLIENTSEED ||
     '000000000000000007a9a31ff7f07463d91af6b5454241d5faf282e5e0fe1b3a',

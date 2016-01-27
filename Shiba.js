@@ -176,9 +176,9 @@ Shiba.prototype.checkAutomute = function*(msg) {
     debugautomute('Checking url: ' + url);
 
     // Run the regular expressions against the unshortened url.
-    let r = automutes.find(r => url.match(r));
-    if (r) {
-      debugautomute('URL matched ' + r);
+    let automute = automutes.find(r => url.match(r));
+    if (automute) {
+      debugautomute('URL matched ' + automute);
       this.webClient.doMute(msg.username, '6h', msg.channelName);
       return true;
     }
@@ -188,21 +188,20 @@ Shiba.prototype.checkAutomute = function*(msg) {
 };
 
 Shiba.prototype.checkRate = function*(msg) {
-  let rates = [{count: 4, seconds: 1, mute: '15m'},
-               {count: 5, seconds: 5, mute: '15m'},
-               {count: 8, seconds: 12, mute: '15m'}
-              ];
+  let rates = [
+    {count: 4, seconds: 1, mute: '15m'},
+    {count: 5, seconds: 5, mute: '15m'},
+    {count: 8, seconds: 12, mute: '15m'}
+  ];
 
-  let self = this;
-  let rate = rates.find(rate => {
+  for (let rate of rates) {
     let after    = new Date(Date.now() - rate.seconds * 1000);
-    let messages = self.chatStore.getChatMessages(msg.username, after);
-    return messages.length > rate.count;
-  });
+    let messages = this.chatStore.getChatMessages(msg.username, after);
 
-  if (rate) {
-    this.webClient.doMute(msg.username, rate.mute, msg.channelName);
-    return true;
+    if (messages.length > rate.count) {
+      this.webClient.doMute(msg.username, rate.mute, msg.channelName);
+      return true;
+    }
   }
 
   return false;
@@ -240,21 +239,53 @@ Shiba.prototype.checkCmdRate = function*(msg) {
   return false;
 };
 
+// Map command names to list of aliases:
+let cmdAliases = {
+  custom:   [],
+  lick:     ['lck', 'lic', 'lik', 'lk'],
+  seen:     ['sen', 'sn', 's'],
+  help:     ['faq'],
+  convert:  ['conver', 'conv', 'cv', 'c'],
+  block:    ['blck', 'blk', 'bl'],
+  bust:     ['bst', 'bt'],
+  automute: [],
+  median:   ['med'],
+  prob:     ['prb', 'pob', 'pb', 'p'],
+  profit:   ['prfit', 'profi', 'prof', 'prft', 'prf', 'prt'],
+  sql:      [],
+  streak:   []
+};
+
+let mapAlias = {};
+_.forEach(cmdAliases, (aliases, cmd) => {
+  // Map each command to itself
+  mapAlias[cmd] = cmd;
+
+  // Map alises to command.
+  _.forEach(aliases, alias => {
+    mapAlias[alias] = cmd;
+  });
+});
+
+// A list of commands not allows in the english channel.
+let cmdBlacklist = [
+  'bust', 'convert', 'median', 'prob', 'profit', 'streak'
+];
+
+/* eslint complexity: [2,16] */
 Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   debug('Handling cmd %s', cmd);
+
   // Cmd rate limiter
   if (yield* this.checkCmdRate(msg)) return;
 
-  var blacklist = [
-    'seen', 'sen', 'sn', 's', 'convert', 'conver', 'conv', 'cv', 'c', 'bust',
-    'bst', 'bt', 'median', 'med', 'prob', 'prb', 'pob', 'pb', 'p', 'profit',
-    'prfit', 'profi', 'prof', 'prft', 'prf', 'prt', 'streak'
-  ];
+  // Lookup proper command name or be undefined.
+  cmd = mapAlias[cmd.toLowerCase()];
 
   // Check if a blacklisted command is used in the english channel.
   if (msg.channelName === 'english' &&
-      Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0 &&
-      blacklist.indexOf(cmd.toLowerCase()) >= 0) {
+      cmdBlacklist.indexOf(cmd) >= 0 &&
+      Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0) {
     this.webClient.doSay(
       '@' + msg.username +
         ' Please use the SPAM channel for that command.',
@@ -263,67 +294,39 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     return;
   }
 
-  switch(cmd.toLowerCase()) {
-  case 'custom':
-    yield* this.onCmdCustom(msg, rest);
-    break;
-  case 'lick':
-  case 'lck':
-  case 'lic':
-  case 'lik':
-  case 'lk':
-    yield* this.onCmdLick(msg, rest);
-    break;
-  case 'seen':
-  case 'sen':
-  case 'sn':
-  case 's':
-    yield* this.onCmdSeen(msg, rest);
-    break;
-  case 'faq':
-  case 'help':
-    yield* this.onCmdHelp(msg, rest);
-    break;
-  case 'convert':
-  case 'conver':
-  case 'conv':
-  case 'cv':
-  case 'c':
-    yield* this.onCmdConvert(msg, rest);
-    break;
-  case 'block':
-  case 'blck':
-  case 'blk':
-  case 'bl':
-    yield* this.cmdBlock.handle(this.webClient, msg, rest);
-    break;
-  case 'bust':
-  case 'bst':
-  case 'bt':
-    yield* this.cmdBust.handle(this.webClient, this.client, msg, rest);
-    break;
+  switch(cmd) {
   case 'automute':
     yield* this.cmdAutomute.handle(this.webClient, msg, rest);
     break;
+  case 'block':
+    yield* this.cmdBlock.handle(this.webClient, msg, rest);
+    break;
+  case 'bust':
+    yield* this.cmdBust.handle(this.webClient, this.client, msg, rest);
+    break;
+  case 'convert':
+    yield* this.onCmdConvert(msg, rest);
+    break;
+  case 'custom':
+    yield* this.onCmdCustom(msg, rest);
+    break;
+  case 'help':
+    yield* this.onCmdHelp(msg, rest);
+    break;
+  case 'lick':
+    yield* this.onCmdLick(msg, rest);
+    break;
   case 'median':
-  case 'med':
     yield* this.cmdMedian.handle(this.webClient, msg, rest);
     break;
   case 'prob':
-  case 'prb':
-  case 'pob':
-  case 'pb':
-  case 'p':
     yield* this.cmdProb.handle(this.webClient, msg, rest);
     break;
   case 'profit':
-  case 'prfit':
-  case 'profi':
-  case 'prof':
-  case 'prft':
-  case 'prf':
-  case 'prt':
     yield* this.cmdProfit.handle(this.webClient, msg, rest);
+    break;
+  case 'seen':
+    yield* this.onCmdSeen(msg, rest);
     break;
   case 'sql':
     yield* this.cmdSql.handle(this.webClient, msg, rest);

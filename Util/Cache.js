@@ -8,15 +8,14 @@ function Cache(opts) {
   self.gen  = opts.load;
   self.opts = opts;
 
-  opts.load = function(key, cb) {
-    co(self.gen(key))
-      .then(function(res) {
-        cb(null, res);
-      })
-      .catch(cb);
-  };
+  // Create an opts object for async-cache with a callback-based load function.
+  let acopts = Object.assign({}, opts, {
+    load: (key, cb) => {
+      co(self.gen(key)).then(res => cb(null, res), cb);
+    }
+  });
 
-  self.cache = new AsyncCache(opts);
+  self.cache = new AsyncCache(acopts);
 }
 
 Cache.prototype.get = function*(key) {
