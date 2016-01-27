@@ -390,10 +390,17 @@ Shiba.prototype.onCmdLick = function*(msg, user) {
     let m = customs[Math.floor(r)];
     this.webClient.doSay(m, msg.channelName);
   } catch(err) {
-    if (err === 'USER_DOES_NOT_EXIST')
+    switch (err) {
+    case 'USER_DOES_NOT_EXIST':
       this.webClient.doSay('very stranger. never seen', msg.channelName);
-    else
+      break;
+    case 'USERNAME_INVALID':
+      this.webClient.doSay('name invalid. you trolling!?', msg.channelName);
+      break;
+    default:
       console.error('[ERROR] onCmdLick:', err);
+      break;
+    }
   }
 };
 

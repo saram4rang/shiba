@@ -16,7 +16,6 @@ function WebClient(config) {
 
     let opts = {
       extraHeaders: {
-        'X-Custom-Header-For-My-Project': 'my-secret-access-token',
         'Cookie': 'id='+config.SESSION
       }
     };
@@ -37,18 +36,29 @@ inherits(WebClient, EventEmitter);
 WebClient.prototype.onMsg = function(msg) {
     debugchat('Msg: %s', JSON.stringify(msg));
 
-    if(!msg.channelName)
-        console.log('Received mesage with no channel');
+    if (!msg.channelName)
+        console.log('[WebClient.onMsg]', 'Received message with no channel');
 
     this.emit('msg', msg);
 };
 
 WebClient.prototype.onError = function(err) {
-    console.error('webclient onError: ', err);
+    if (err instanceof Error) {
+        switch (err.type) {
+        case 'TransportError':
+            debug('Transport closed');
+            break;
+        default:
+            console.error('[Webclient.onError]', err.stack);
+            break;
+        }
+    } else {
+        console.error('[Webclient.onError]', err);
+    }
 };
 
 WebClient.prototype.onErr = function(err) {
-    console.error('webclient onErr: ', err);
+    console.error('[Webclient.onErr]', err);
 };
 
 WebClient.prototype.onConnect = function(data) {
@@ -75,7 +85,7 @@ WebClient.prototype.doSay = function(line, channelName) {
 
     this.socket.emit('say', line, channelName, true, function(err) {
         if(err)
-            console.error('[Say] ', err);
+            console.error('[WebClient.doSay]', err);
     });
 };
 
@@ -90,9 +100,8 @@ WebClient.prototype.doMute = function(user, timespec, channelName) {
       let line = '/mute ' + user;
       if (timespec) line = line + ' ' + timespec;
       this.socket.emit('say', line, channelName, true, function(err) {
-	  console.log('[chan]: ', channelName)
 	  if(err)
-              console.error('[Mute] ', err);
+              console.error('[WebClient.doMute]', err);
       });
   } else {
       debugchat('Not muting whitelisted user: %s time: %s', user, timespec);

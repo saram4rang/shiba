@@ -31,6 +31,8 @@ function eqMsg(a,b) {
 }
 
 ChatStore.prototype.mergeMessages = function*(msgs) {
+  // Rofl, They are sometimes not sorted. DB race?
+  /*
   // Make sure messages are sorted increasingly by time.
   var t = new Date(0);
   _.forEach(msgs, function(msg) {
@@ -39,7 +41,7 @@ ChatStore.prototype.mergeMessages = function*(msgs) {
     console.assert(t <= d);
     t = d;
   });
-
+  */
 
   let self = this;
   let na   = msgs, oa = this.store;
