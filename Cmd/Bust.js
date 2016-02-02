@@ -31,8 +31,7 @@ Bust.prototype.handle = function*(chatClient, gameClient, msg, input) {
   // Assume that we have never seen this crashpoint.
   if (res.length === 0) {
     chatClient.doSay(
-      'wow. such absence. never seen',
-      qry.text || input,
+      'wow. such absence. never seen' + (qry.text || input),
       msg.channelName
     );
     return;
