@@ -189,6 +189,10 @@ Shiba.prototype.checkAutomute = function*(msg) {
 
 Shiba.prototype.checkRate = function*(msg) {
   let rates = [
+    {count: 12, seconds: 1, mute: '12h'},
+    {count: 10, seconds: 1, mute: '9h'},
+    {count: 8, seconds: 1, mute: '6h'},
+    {count: 6, seconds: 1, mute: '30m'},
     {count: 4, seconds: 1, mute: '15m'},
     {count: 5, seconds: 5, mute: '15m'},
     {count: 8, seconds: 12, mute: '15m'}
