@@ -740,3 +740,24 @@ exports.getUserProfit = function*(username) {
      ORDER BY game_id ASC`, [username]);
   return res.rows;
 };
+
+exports.getWageredTime = function*(time) {
+  let sql =
+    `SELECT SUM(bet) wagered FROM plays JOIN games ON game_id = games.id
+     WHERE games.created >= $1`;
+
+  let par = [new Date(Date.now() - time)];
+  let data = yield* query(sql, par);
+
+  return data.rows[0].wagered;
+};
+
+exports.getWageredGames = function*(games) {
+  let sql =
+    `WITH t AS (SELECT COALESCE(SUM(bet), 0) wagered FROM games ORDER BY game_id DESC LIMIT $2)
+       SELECT COALESCE(SUM(wagered), 0) wagered FROM t`;
+  let par = [username, games];
+  let data = yield* query(sql, par);
+
+  return data.rows[0].wagered;
+};
