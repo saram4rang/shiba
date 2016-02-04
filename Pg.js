@@ -675,11 +675,13 @@ exports.getMaxStreak = function*(op, bound) {
 
 exports.getProfitTime = function*(username, time) {
   let sql =
-    'SELECT' +
-    '  COALESCE(SUM(profit),0) profit' +
-    '  FROM plays_view' +
-    '  WHERE user_id = userIdOf($1) AND' +
-    '        created >= $2';
+    `SELECT SUM(COALESCE(cash_out,0) - bet + COALESCE(bonus,0)) AS profit
+       FROM plays
+       WHERE user_id = userIdOf($1) AND game_id >= (
+         SELECT id FROM games
+         WHERE created >= $2
+         ORDER BY id ASC LIMIT 1
+       )`;
 
   let par = [username, new Date(Date.now() - time)];
   let data = yield* query(sql, par);
@@ -703,10 +705,8 @@ exports.getProfitGames = function*(username, games) {
 
 exports.getSiteProfitTime = function*(time) {
   let sql =
-    'SELECT' +
-    '  -COALESCE(SUM(profit),0) profit' +
-    '  FROM plays_view' +
-    '  WHERE created >= $1';
+    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
+       FROM games WHERE created >= $1`;
 
   let par = [new Date(Date.now() - time)];
   let data = yield* query(sql, par);
@@ -716,10 +716,8 @@ exports.getSiteProfitTime = function*(time) {
 
 exports.getSiteProfitGames = function*(games) {
   let sql =
-    'SELECT' +
-    '  -COALESCE(SUM(profit),0) profit' +
-    '  FROM plays_view' +
-    '  WHERE game_id >= (SELECT MAX(id) FROM games) - $1';
+    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
+       FROM games WHERE id >= (SELECT MAX(id) FROM games) - $1`;
   let par = [games];
   let data = yield* query(sql, par);
 
@@ -755,8 +753,8 @@ exports.getUserProfit = function*(username) {
 
 exports.getWageredTime = function*(time) {
   let sql =
-    `SELECT SUM(bet) wagered FROM plays JOIN games ON game_id = games.id
-     WHERE games.created >= $1`;
+    `SELECT SUM(wagered) wagered FROM games
+       WHERE created >= $1`;
 
   let par = [new Date(Date.now() - time)];
   let data = yield* query(sql, par);
@@ -766,8 +764,8 @@ exports.getWageredTime = function*(time) {
 
 exports.getWageredGames = function*(games) {
   let sql =
-    `WITH t AS (SELECT COALESCE(SUM(bet), 0) wagered FROM games ORDER BY game_id DESC LIMIT $2)
-       SELECT COALESCE(SUM(wagered), 0) wagered FROM t`;
+    `SELECT SUM(wagered) wagered FROM games
+       WHERE id >= (SELECT MAX(id) FROM games) - $2`;
   let par = [username, games];
   let data = yield* query(sql, par);
 
