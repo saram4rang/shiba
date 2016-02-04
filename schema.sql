@@ -50,7 +50,10 @@ CREATE TABLE games (
   game_crash bigint NOT NULL,
   seed text,
   created timestamp with time zone DEFAULT now() NOT NULL,
-  started timestamp with time zone NULL
+  started timestamp with time zone NULL,
+  wagered bigint,
+  cashed_out bigint,
+  bonus bigint
 );
 
 CREATE TABLE plays (

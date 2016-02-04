@@ -347,6 +347,15 @@ exports.putGame = function*(info) {
     userIds[user.username] = user.id;
   });
 
+  let wagered = 0;
+  let cashedOut = 0;
+  let bonus = 0;
+  _.forEach(info.player_info, play => {
+    wagered += play.bet;
+    cashedOut += play.bet * (play.stopped_at || 0) / 100;
+    bonus += play.bonus || 0;
+  });
+
   // Insert into the games and plays table in a common transaction.
   debug('Recording info for game #' + info.game_id);
   yield* withTransaction(function*(query) {
@@ -354,14 +363,17 @@ exports.putGame = function*(info) {
 
     let sql =
       `INSERT INTO
-       games(id, game_crash, seed, created, started)
-       VALUES ($1, $2, $3, $4, $5)`;
+       games(id, game_crash, seed, created, started, wagered, cashed_out, bonus)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
     let par = [
       info.game_id,
       info.game_crash,
       info.server_seed || info.hash,
       new Date(info.created),
-      new Date(info.startTime)
+      new Date(info.startTime),
+      wagered,
+      cashedOut,
+      bonus
     ];
     yield* query(sql, par);
 
