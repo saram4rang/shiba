@@ -27,7 +27,8 @@ GameStore.prototype.addGame = function*(game) {
   try {
     yield* Pg.putGame(game);
   } catch(err) {
-    console.error('Failed to log game:', game, '\nError:', err);
+    console.error(`Failed to log game: ${game}`);
+    console.error(`Error: ${err && err.stack || err}`);
   }
 
   if (this.store.length > Config.GAME_HISTORY)

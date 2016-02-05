@@ -1,9 +1,10 @@
 CREATE TABLE users (
   id bigserial NOT NULL PRIMARY KEY,
   username text NOT NULL,
-  gross_profit bigint DEFAULT 0 NOT NULL,
-  net_profit bigint DEFAULT 0 NOT NULL,
-  games_played bigint DEFAULT 0 NOT NULL,
+  wagered bigint DEFAULT 0 NOT NULL,
+  cashed_out bigint DEFAULT 0 NOT NULL,
+  bonused bigint DEFAULT 0 NOT NULL,
+  num_played bigint DEFAULT 0 NOT NULL,
   -- The timestamp indicates when we have seen the user for the first time.
   created timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -51,9 +52,10 @@ CREATE TABLE games (
   seed text,
   created timestamp with time zone DEFAULT now() NOT NULL,
   started timestamp with time zone NULL,
-  wagered bigint,
-  cashed_out bigint,
-  bonus bigint
+  wagered bigint DEFAULT 0 NOT NULL,
+  cashed_out bigint DEFAULT 0 NOT NULL,
+  bonused bigint DEFAULT 0 NOT NULL,
+  num_played bigint DEFAULT 0 NOT NULL
 );
 
 CREATE TABLE plays (
@@ -158,71 +160,162 @@ ALTER TABLE blocknotifications
   ADD CONSTRAINT bv_blocknotifications_pkey
   PRIMARY KEY (username, channel_name);
 
-CREATE OR REPLACE FUNCTION userstats_trigger()
-  RETURNS trigger AS $$
+CREATE TABLE userstats (
+  user_id bigint NOT NULL,
+  timespan timestamp WITHOUT time zone NOT NULL,
+  wagered bigint DEFAULT 0 NOT NULL,
+  cashed_out bigint DEFAULT 0 NOT NULL,
+  bonused bigint DEFAULT 0 NOT NULL,
+  num_played bigint DEFAULT 0 NOT NULL,
+  PRIMARY KEY (user_id, timespan)
+);
 
-  DECLARE
-    delta_user_id bigint;
-    delta_gross_profit bigint;
-    delta_net_profit bigint;
-    delta_games_played bigint;
+CREATE OR REPLACE FUNCTION plays_userstats_trigger() RETURNS trigger AS $$
+  if (TG_OP === 'UPDATE' && OLD.user_id !== NEW.user_id)
+    throw new Error('Update of user_id not allowed');
 
-  -- Work out the increment/decrement amount(s).
-  BEGIN
-    IF (TG_OP = 'INSERT') THEN
-      delta_user_id = NEW.user_id;
-      delta_gross_profit = COALESCE(NEW.cash_out-NEW.bet,0::numeric) + COALESCE(NEW.bonus,0::numeric);
-      delta_net_profit   = COALESCE(NEW.cash_out, 0::numeric) + COALESCE(NEW.bonus, 0::numeric) - NEW.bet;
-      delta_games_played = 1;
-    ELSIF (TG_OP = 'DELETE') THEN
-      delta_user_id = OLD.user_id;
-      delta_gross_profit = - (COALESCE(OLD.cash_out-OLD.bet,0::numeric) + COALESCE(OLD.bonus,0::numeric));
-      delta_net_profit   = - (COALESCE(OLD.cash_out, 0::numeric) + COALESCE(OLD.bonus, 0::numeric) - OLD.bet);
-      delta_games_played = - 1;
-    ELSIF (TG_OP = 'UPDATE') THEN
-      IF ( OLD.user_id != NEW.user_id) THEN
-        RAISE EXCEPTION
-          'Update of user_id : % -> % not allowed', OLD.user_id, NEW.user_id;
-      END IF;
+  var userId, wagered = 0, cashedOut = 0, bonused = 0, numPlayed = 0;
+  var now = new Date();
 
-      delta_user_id = OLD.user_id;
-      delta_gross_profit =
-          COALESCE(NEW.cash_out-NEW.bet,0::numeric) + COALESCE(NEW.bonus,0::numeric)
-        - (COALESCE(OLD.cash_out-OLD.bet,0::numeric) + COALESCE(OLD.bonus,0::numeric));
-      delta_net_profit   =
-          COALESCE(NEW.cash_out, 0::numeric) + COALESCE(NEW.bonus, 0::numeric) - NEW.bet
-        - (COALESCE(OLD.cash_out, 0::numeric) + COALESCE(OLD.bonus, 0::numeric) - OLD.bet);
-      delta_games_played = 0;
-    END IF;
+  // Add new values.
+  if (NEW) {
+    userId     = NEW.user_id;
+    wagered   += NEW.bet;
+    cashedOut += NEW.cash_out || 0;
+    bonused   += NEW.bonus || 0;
+    numPlayed += 1;
+  }
 
-    UPDATE users
-      SET gross_profit = gross_profit + delta_gross_profit,
-          net_profit   = net_profit + delta_net_profit,
-          games_played = games_played + delta_games_played
-      WHERE id = delta_user_id;
+  // Subtract old values
+  if (OLD) {
+    userId     = OLD.user_id;
+    wagered   -= OLD.bet;
+    cashedOut -= OLD.cash_out || 0;
+    bonused   -= OLD.bonus || 0;
+    numPlayed -= 1;
+  }
 
-    RETURN NEW;
-  END;
-$$ LANGUAGE plpgsql;
+  for (var i = 1; i <= 10; ++i) {
+    try{
+      plv8.subtransaction(function() {
+        // First try to update the stats row.
+        var numRow = plv8.execute(
+          "UPDATE userstats " +
+          "  SET wagered    = wagered + $1, " +
+          "      cashed_out = cashed_out + $2, " +
+          "      bonused    = bonused + $3, " +
+          "      num_played = num_played + $4 " +
+          "  WHERE user_id = $5 " +
+          "  AND timespan = date_trunc('week', $6::timestamp without time zone)",
+          [wagered, cashedOut, bonused, numPlayed, userId, now]
+        );
 
-CREATE TRIGGER userstats_trigger
+        if (numRow > 0)
+          return; // Update successful, so stop here.
+
+        // Row doesnt exist, so try to insert it. If someone else inserts
+        // the same key concurrently, we could get a unique-key exception.
+        plv8.execute(
+          "INSERT INTO userstats(user_id, timespan, wagered, cashed_out, bonused, num_played)" +
+          "  VALUES ($1, date_trunc('week', $2::timestamp without time zone), $3, $4, $5, $6)",
+          [userId, now, wagered, cashedOut, bonused, numPlayed]
+        );
+      });
+      // Upserting successful so break out of the loop.
+      break;
+    } catch(e) {
+      var err = e && e.stack && e.stack.toString() || e && e.toString() || e;
+      plv8.elog(WARNING, "Failed upserting userstats. Restarting" + e);
+      if (i === 10) throw e;
+    }
+  }
+
+  plv8.execute(
+    'UPDATE users ' +
+    '  SET wagered    = wagered + $1, ' +
+    '      cashed_out = cashed_out + $2, ' +
+    '      bonused    = bonused + $3, ' +
+    '      num_played = num_played + $4 ' +
+    '  WHERE id = $5',
+    [wagered, cashedOut, bonused, numPlayed, userId]
+  );
+$$ LANGUAGE plv8 VOLATILE;
+
+CREATE TRIGGER plays_userstats_trigger
 AFTER INSERT OR UPDATE OR DELETE ON plays
-    FOR EACH ROW EXECUTE PROCEDURE userstats_trigger();
+    FOR EACH ROW EXECUTE PROCEDURE plays_userstats_trigger();
+
+CREATE TABLE sitestats (
+  timespan timestamp WITHOUT time zone NOT NULL,
+  wagered bigint DEFAULT 0 NOT NULL,
+  cashed_out bigint DEFAULT 0 NOT NULL,
+  bonused bigint DEFAULT 0 NOT NULL,
+  num_played bigint DEFAULT 0 NOT NULL,
+  PRIMARY KEY (timespan)
+);
+
+CREATE OR REPLACE FUNCTION games_sitestats_trigger() RETURNS trigger AS $$
+  if (TG_OP === 'UPDATE' && OLD.id !== NEW.id)
+    throw new Error('Update of game id not allowed');
+
+  var wagered = 0, cashedOut = 0, bonused = 0, numPlayed = 0;
+  var created = new Date(NEW.created || OLD.created);
+
+  // Add new values.
+  if (NEW) {
+    wagered   += NEW.wagered || 0;
+    cashedOut += NEW.cashed_out || 0;
+    bonused   += NEW.bonused || 0;
+    numPlayed += NEW.num_played || 0;
+  }
+
+  // Subtract old values
+  if (OLD) {
+    wagered   -= OLD.wagered || 0;
+    cashedOut -= OLD.cashed_out || 0;
+    bonused   -= OLD.bonused || 0;
+    numPlayed -= OLD.num_played || 0;
+  }
+
+  for (var i = 1; i <= 10; ++i) {
+    try{
+      plv8.subtransaction(function() {
+        // First try to update the stats row.
+        var numRow = plv8.execute(
+          "UPDATE sitestats " +
+          "  SET wagered    = wagered + $1, " +
+          "      cashed_out = cashed_out + $2, " +
+          "      bonused    = bonused + $3, " +
+          "      num_played = num_played + $4 " +
+          "  WHERE timespan = date_trunc('hour', $5::timestamp without time zone)",
+          [wagered, cashedOut, bonused, numPlayed, created]
+        );
+
+        if (numRow > 0)
+          return; // Update successful, so stop here.
+
+        // Row doesnt exist, so try to insert it. If someone else inserts
+        // the same key concurrently, we could get a unique-key exception.
+        plv8.execute(
+          "INSERT INTO sitestats(timespan, wagered, cashed_out, bonused, num_played)" +
+          "  VALUES (date_trunc('hour', $1::timestamp without time zone), $2, $3, $4, $5)",
+          [created, wagered, cashedOut, bonused, numPlayed]
+        );
+      });
+      // Upserting successful so break out of the loop.
+      break;
+    } catch(e) {
+      if (i === 10) throw e;
+      var err = e && e.stack && e.stack.toString() || e && e.toString() || e;
+      plv8.elog(WARNING, "Failed upserting sitestats. Restarting" + e);
+    }
+  }
+$$ LANGUAGE plv8 VOLATILE;
+
+CREATE TRIGGER games_sitestats_trigger
+AFTER INSERT OR UPDATE OR DELETE ON games
+    FOR EACH ROW EXECUTE PROCEDURE games_sitestats_trigger();
 
 CREATE OR REPLACE FUNCTION userIdOf(text) RETURNS bigint AS $$
   SELECT id FROM users WHERE lower(username) = lower($1)
 $$ LANGUAGE SQL STABLE;
-
-CREATE OR REPLACE VIEW plays_view AS
-  SELECT
-    game_id,
-    g.game_crash,
-    g.created,
-    username,
-    user_id,
-    bet,
-    cash_out,
-    bonus,
-    COALESCE(cash_out,0) - bet + COALESCE(bonus,0) AS profit,
-    100*cash_out/bet AS factor
-FROM games g JOIN plays ON g.id = plays.game_id JOIN users ON user_id = users.id;

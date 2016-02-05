@@ -21,8 +21,11 @@ pg.types.setTypeParser(20, val =>
 let querySeq = 0;
 function *query(sql, params) {
   let qid = querySeq++;
-  debugpg("[%d] Executing query '%s'", qid, sql);
-  if (params) debugpg('[%d] Parameters %s', qid, JSON.stringify(params));
+  debugpg(`[${qid}] Executing query "${sql}"`);
+  if (params)
+    debugpg(`[${qid}] Parameters ${JSON.stringify(params)}`);
+  else
+    params = [];
 
   let vals   = yield pg.connectPromise(Config.DATABASE);
   let client = vals[0];
@@ -30,7 +33,7 @@ function *query(sql, params) {
 
   try {
     let result = yield client.queryPromise(sql, params);
-    debugpg('[%d] Finished query', qid);
+    debugpg(`[${qid}] Finished query`);
     return result;
   } catch(err) {
     // console.error('Query [%d] failed with %s', qid, err.toString());
@@ -57,20 +60,19 @@ function* withClient(runner) {
   let client = vals[0];
   let done   = vals[1];
 
-  let queryGen =
-        function*(sql, params) {
-          let qid = querySeq++;
-          debugpg("[%d] Executing query '%s'", qid, sql);
-          if (params)
-            debugpg('[%d] Parameters %s', qid, JSON.stringify(params));
-
-          let result = yield client.queryPromise(sql, params);
-          debugpg('[%d] Finished query', qid);
-          return result;
-        };
-
   try {
-    let result = yield* runner(queryGen);
+    let result = yield* runner(function*(sql, params) {
+      let qid = querySeq++;
+      debugpg(`[${qid}] Executing query "${sql}"`);
+      if (params)
+        debugpg(`[${qid}] Parameters ${JSON.stringify(params)}`);
+      else
+        params = [];
+
+      let result = yield client.queryPromise(sql, params);
+      debugpg(`[${qid}] Finished query`);
+      return result;
+    });
     done();
     return result;
   } catch (ex) {
@@ -109,12 +111,12 @@ function* withTransaction(runner) {
   return yield* withClient(function*(query) {
     let txid = txSeq++;
     try {
-      debugpg('[%d] Starting transaction', txid);
+      debugpg(`[${txid}] Starting transaction`);
       yield* query('BEGIN');
       let result = yield* runner(query);
-      debugpg('[%d] Committing transaction', txid);
+      debugpg(`[${txid}] Committing transaction`);
       yield* query('COMMIT');
-      debugpg('[%d] Finished transaction', txid);
+      debugpg(`[${txid}] Finished transaction`);
       return result;
     } catch (ex) {
       try {
@@ -129,52 +131,54 @@ function* withTransaction(runner) {
 }
 
 function* getOrCreateUser(username) {
-  debug('GetOrCreateUser user: ' + username);
+  debug(`GetOrCreateUser user: ${username}`);
 
   return yield* withTransaction(function*(query) {
-    let sql = 'SELECT * FROM users WHERE lower(username) = lower($1)';
-    let par = [username];
+    let res = yield* query(
+      'SELECT * FROM users WHERE lower(username) = lower($1)',
+      [username]
+    );
 
-    let result = yield* query(sql, par);
-
-    if (result.rows.length > 0) {
+    if (res.rows.length > 0) {
       // User exists. Return the first (and only) row.
-      assert(result.rows.length === 1);
-      return result.rows[0];
+      assert(res.rows.length === 1);
+      return res.rows[0];
     }
 
     // Create new user.
-    sql = 'INSERT INTO users(username) VALUES($1) RETURNING username, id';
-    par = [username];
+    res = yield* query(
+      'INSERT INTO users(username) VALUES($1) RETURNING username, id',
+      [username]
+    );
 
-    result = yield* query(sql, par);
-    assert(result.rows.length === 1);
-    return result.rows[0];
+    assert(res.rows.length === 1);
+    return res.rows[0];
   });
 }
 
 function* getExistingUser(username) {
-  debug('Getting user: ' + username);
+  debug(`Getting user: ${username}`);
 
   if (Lib.isInvalidUsername(username))
     throw 'USERNAME_INVALID';
 
-  let sql = 'SELECT * FROM users WHERE lower(username) = lower($1)';
-  let par = [username];
+  let res = yield* query(
+    'SELECT * FROM users WHERE lower(username) = lower($1)',
+    [username]
+  );
 
-  let data = yield* query(sql, par);
-
-  if (data.rows.length <= 0)
+  if (res.rows.length <= 0)
     throw 'USER_DOES_NOT_EXIST';
 
   // User exists. Return the first (and only) row.
-  assert(data.rows.length === 1);
-  return data.rows[0];
+  assert(res.rows.length === 1);
+  return res.rows[0];
 }
 
 const userCache = new Cache({
-  // Cache users for 30 minutes.
-  maxAge: 1000 * 60 * 30,
+  // Cache users for 1 day.
+  maxAge: 1000 * 60 * 60 * 24,
+  max: 10000,
   load : getOrCreateUser
 });
 
@@ -185,7 +189,7 @@ function* getUser(username) {
   try {
     return yield* userCache.get(username);
   } catch(err) {
-    console.error('[Pg.getUser] ERROR:', err);
+    console.error('[Pg.getUser] ERROR:', err && err.stack || err);
     throw err;
   }
 }
@@ -201,15 +205,15 @@ CREATE TABLE chats (
 );
 */
 exports.putChat = function*(username, channelName, message, isBot, timestamp) {
-  debug('Recording chat message. User: ' + username);
+  debug(`Recording chat message. User: ${username}`);
   let user = yield* getUser(username);
 
-  let sql =
-    `INSERT INTO chats(user_id, channel, message, is_bot, created)
-     VALUES ($1, $2, $3, $4, $5)`;
-  let par = [user.id, channelName, message, isBot, timestamp];
   try {
-    yield* query(sql, par);
+    yield* query(
+      `INSERT INTO chats(user_id, channel, message, is_bot, created)
+         VALUES ($1, $2, $3, $4, $5)`,
+       [user.id, channelName, message, isBot, timestamp]
+    );
   } catch(err) {
     console.log('ARGUMENTS:', arguments);
     if (err instanceof Error)
@@ -230,35 +234,27 @@ CREATE TABLE mutes (
 );
 */
 exports.putMute = function*(username, moderator, timespec, shadow, timestamp) {
-  debug('Recording mute message.' +
-        ' User: ' + username + '.' +
-        ' Moderator: ' + moderator);
+  debug(`Recording mute. User: ${username} Moderator ${moderator}`);
 
   let vals = yield [username, moderator].map(getUser);
-  let usr  = vals[0];
-  let mod  = vals[1];
-  let sql  =
+  let usr = vals[0], mod = vals[1];
+  yield* query(
     `INSERT INTO mutes(user_id, moderator_id, timespec, shadow, created)
-     VALUES ($1, $2, $3, $4, $5)`;
-  let par  = [usr.id, mod.id, timespec, shadow, timestamp];
-  yield* query(sql, par);
+     VALUES ($1, $2, $3, $4, $5)`,
+    [usr.id, mod.id, timespec, shadow, timestamp]
+  );
 };
 
 exports.putUnmute = function*(username, moderatorname, shadow, timestamp) {
-  debug('Recording unmute message.' +
-        ' User: ' + username + '.' +
-        ' Moderator: ' + moderatorname);
+  debug(`Recording unmute. User: ${username} Moderator: ${moderatorname}`);
 
   let vals = yield [username, moderatorname].map(getUser);
-  let usr  = vals[0];
-  let mod  = vals[1];
-
-  let sql =
-    'INSERT INTO ' +
-    'unmutes(user_id, moderator_id, shadow, created) ' +
-    'VALUES ($1, $2, $3, $4)';
-  let par = [usr.id, mod.id, shadow, timestamp];
-  yield* query(sql, par);
+  let usr = vals[0], mod = vals[1];
+  yield* query(
+    `INSERT INTO unmutes(user_id, moderator_id, shadow, created)
+     VALUES ($1, $2, $3, $4)`,
+    [usr.id, mod.id, shadow, timestamp]
+  );
 };
 
 exports.putMsg = function*(msg) {
@@ -295,39 +291,25 @@ exports.getLastMessages = function*() {
 
   let sql1 =
     `SELECT
-       chats.created AS date,
-       'say' AS type,
-       username,
-       message
-     FROM chats
-     JOIN users ON chats.user_id = users.id
-     ORDER BY date DESC
-     LIMIT $1`;
+       chats.created AS date, 'say' AS type, username, message
+     FROM chats JOIN users ON chats.user_id = users.id
+     ORDER BY date DESC LIMIT $1`;
   let sql2 =
     `SELECT
-       mutes.created AS date,
-       'mute' AS type,
-       m.username AS moderator,
-       u.username,
-       timespec,
-       shadow
+       mutes.created AS date, 'mute' AS type, m.username AS moderator,
+       u.username, timespec, shadow
      FROM mutes
-     JOIN users AS m ON mutes.moderator_id = m.id
-     JOIN users AS u ON mutes.user_id = u.id
-     ORDER BY date DESC
-     LIMIT $1`;
+       JOIN users AS m ON mutes.moderator_id = m.id
+       JOIN users AS u ON mutes.user_id = u.id
+     ORDER BY date DESC LIMIT $1`;
   let sql3 =
     `SELECT
-       unmutes.created AS date,
-       'unmute' AS type,
-       m.username AS moderator,
-       u.username,
-       shadow
+       unmutes.created AS date, 'unmute' AS type, m.username AS moderator,
+       u.username, shadow
      FROM unmutes
-     JOIN users AS m ON unmutes.moderator_id = m.id
-     JOIN users AS u ON unmutes.user_id = u.id
-     ORDER BY date DESC
-     LIMIT $1`;
+       JOIN users AS m ON unmutes.moderator_id = m.id
+       JOIN users AS u ON unmutes.user_id = u.id
+     ORDER BY date DESC LIMIT $1`;
   let par = [Config.CHAT_HISTORY];
 
   let res = yield [sql1, sql2, sql3].map(sql => query(sql, par));
@@ -343,58 +325,47 @@ exports.putGame = function*(info) {
   // Step1: Resolve all player names.
   let users   = yield players.map(getUser);
   let userIds = {};
-  _.forEach(users, function(user) {
-    userIds[user.username] = user.id;
-  });
+  _.forEach(users, user => userIds[user.username] = user.id);
 
-  let wagered = 0;
+  let wagered   = 0;
   let cashedOut = 0;
-  let bonus = 0;
+  let bonused   = 0;
+  let numPlayed = 0;
   _.forEach(info.player_info, play => {
-    wagered += play.bet;
+    wagered   += play.bet;
     cashedOut += play.bet * (play.stopped_at || 0) / 100;
-    bonus += play.bonus || 0;
+    bonused   += play.bonus || 0;
+    numPlayed += 1;
   });
 
   // Insert into the games and plays table in a common transaction.
   debug('Recording info for game #' + info.game_id);
   yield* withTransaction(function*(query) {
-    debugpg('Inserting game data for game #' + info.game_id);
+    debugpg(`Inserting game data for game #${info.game_id}`);
 
-    let sql =
+    yield* query(
       `INSERT INTO
-       games(id, game_crash, seed, created, started, wagered, cashed_out, bonus)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-    let par = [
-      info.game_id,
-      info.game_crash,
-      info.server_seed || info.hash,
-      new Date(info.created),
-      new Date(info.startTime),
-      wagered,
-      cashedOut,
-      bonus
-    ];
-    yield* query(sql, par);
+       games(id, game_crash, seed, created, started, wagered, cashed_out, bonused, num_played)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [ info.game_id, info.game_crash, info.server_seed || info.hash,
+        new Date(info.created), new Date(info.startTime),
+        wagered, cashedOut, bonused, numPlayed
+      ]
+    );
 
-    for (let player of players) {
-      debugpg('Inserting play for ' + player);
-
+    for (let player in info.player_info) {
+      debugpg(`Inserting play for ${player}`);
       let play = info.player_info[player];
-      let sql =
-        `INSERT INTO plays(user_id, cash_out, game_id, bet, bonus, joined)
-         VALUES ($1, $2, $3, $4, $5, $6)`;
-      let par = [
-        userIds[player],
-        play.stopped_at ? Math.round(play.bet * play.stopped_at / 100) : null,
-        info.game_id,
-        play.bet,
-        play.bonus || null,
-        play.joined || null
-      ];
 
-      yield* query(sql, par);
-    }
+      yield* query(
+        `INSERT INTO plays(user_id, cash_out, game_id, bet, bonus, joined)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [ userIds[player],
+          play.stopped_at ? Math.round(play.bet * play.stopped_at / 100) : null,
+          info.game_id, play.bet, play.bonus || null, play.joined || null
+        ]
+      );
+    };
   });
 };
 
@@ -414,63 +385,59 @@ exports.putLick = function*(username, message, creatorname) {
   let user    = vals[0];
   let creator = vals[1];
 
-  let sql =
-    'INSERT INTO ' +
-    'licks(user_id, message, creator_id) ' +
-    'VALUES ($1, $2, $3)';
-  let par = [user.id, message, creator.id];
-  yield* query(sql, par);
+  yield* query(
+    'INSERT INTO licks(user_id, message, creator_id) VALUES ($1, $2, $3)',
+    [user.id, message, creator.id]
+  );
 };
 
 exports.getLastGames = function*() {
   debug('Retrieving last games');
 
-  let sql =
-    `WITH t AS
-       (SELECT id AS game_id, game_crash, created, seed AS hash
-        FROM games ORDER BY id DESC LIMIT $1)
-       SELECT * FROM t ORDER BY game_id`;
-  let par = [Config.GAME_HISTORY];
-
-  let data = yield* query(sql, par);
-  return data.rows;
+  let res = yield* query(
+    `SELECT * FROM (
+       SELECT id AS game_id, game_crash, created, seed AS hash
+       FROM games ORDER BY id DESC LIMIT $1) t
+      ORDER BY game_id`,
+    [Config.GAME_HISTORY]
+  );
+  return res.rows;
 };
 
 exports.getLick = function*(username) {
   debug('Getting custom lick messages for user: ' + username);
   let user = yield* getExistingUser(username);
+  let res  = yield* query('SELECT message FROM licks WHERE user_id = $1',
+    [user.id]
+  );
 
-  let sql   = 'SELECT message FROM licks WHERE user_id = $1';
-  let par   = [user.id];
-  let data  = yield* query(sql, par);
-  let licks = data.rows.map(row => row.message);
-
-  return {username: user.username, licks: licks};
+  return {
+    username: user.username,
+    licks: res.rows.map(row => row.message)
+  };
 };
 
 exports.getBust = function*(qry) {
-  debug('Getting last bust: ' + JSON.stringify(qry));
-  let sql, par;
+  debug(`Getting last bust: ${JSON.stringify(qry)}`);
+
+  let sql;
   if (qry === 'MAX') {
-    sql = 'SELECT * FROM games WHERE id =' +
-          ' (SELECT id FROM game_crashes' +
-          '   ORDER BY game_crash DESC LIMIT 1)';
-    par = [];
+    sql = `SELECT * FROM games WHERE id =
+            (SELECT id FROM game_crashes
+             ORDER BY game_crash DESC LIMIT 1)`;
   } else {
     let min   = qry.hasOwnProperty('min') ?
                   ' AND game_crash >= ' + qry.min : '';
     let max   = qry.hasOwnProperty('max') ?
                   ' AND game_crash <= ' + qry.max : '';
-    let range = 'TRUE' + min + max;
-    sql = 'SELECT * FROM games WHERE id =' +
-          ' (SELECT id FROM game_crashes' +
-          '   WHERE ' + range +
-          '   ORDER BY id DESC LIMIT 1)';
-    par = [];
+    sql = `SELECT * FROM games WHERE id =
+            (SELECT id FROM game_crashes
+              WHERE TRUE ${min} ${max}
+              ORDER BY id DESC LIMIT 1)`;
   }
 
   try {
-    let data = yield* query(sql, par);
+    let data = yield* query(sql);
     return data.rows;
   } catch(err) {
     console.error(err);
@@ -479,14 +446,14 @@ exports.getBust = function*(qry) {
 };
 
 exports.addAutomute = function*(creator, regex) {
-  debug('Adding automute ' + regex);
-
-  let user = yield* getUser(creator);
-  let sql  = 'INSERT INTO automutes(creator_id, regexp) VALUES($1, $2)';
-  let par  = [user.id, regex.toString()];
+  debug(`Adding automute ${regex}`);
 
   try {
-    yield* query(sql, par);
+    let user = yield* getUser(creator);
+    yield* query(
+      'INSERT INTO automutes(creator_id, regexp) VALUES($1, $2)',
+      [user.id, regex.toString()]
+    );
   } catch(err) {
     console.error(err);
     throw err;
@@ -495,11 +462,8 @@ exports.addAutomute = function*(creator, regex) {
 
 exports.getAutomutes = function*() {
   debug('Getting automute list.');
-  let sql = 'SELECT regexp FROM automutes WHERE enabled';
-  let par = [];
 
-  let data = yield* query(sql, par);
-
+  let data = yield* query('SELECT regexp FROM automutes WHERE enabled');
   let reg = /^\/(.*)\/([gi]*)$/;
   let res = data.rows.map(row => {
     let match = row.regexp.match(reg);
@@ -510,15 +474,14 @@ exports.getAutomutes = function*() {
 };
 
 exports.getLastSeen = function*(username) {
-  debug('Getting last chat message of user ' + username);
+  debug(`Getting last chat message of user ${username}`);
 
   let user = yield* getExistingUser(username);
-
-  let sql =
-    'SELECT created FROM chats WHERE user_id = $1 ' +
-    'ORDER BY created DESC LIMIT 1';
-  let par  = [user.id];
-  let data = yield* query(sql, par);
+  let data = yield* query(
+    `SELECT created FROM chats WHERE user_id = $1
+       ORDER BY created DESC LIMIT 1`,
+    [user.id]
+  );
 
   return data.rows.length > 0 ?
     // Return the first (and only) row.
@@ -534,19 +497,16 @@ exports.getLastSeen = function*(username) {
 
 exports.getLatestBlock = function*() {
   debug('Getting last block from DB');
-  let sql = 'SELECT * FROM blocks ORDER BY height DESC LIMIT 1';
-  let par = [];
-
-  let data = yield* query(sql, par);
+  let data = yield* query('SELECT * FROM blocks ORDER BY height DESC LIMIT 1');
   return data.rows[0];
 };
 
 exports.putBlock = function*(block) {
-  let sql = 'INSERT INTO blocks(height, hash) VALUES($1, $2)';
-  let par = [block.height, block.hash];
-
   try {
-    yield* query(sql, par);
+    yield* query(
+      'INSERT INTO blocks(height, hash) VALUES($1, $2)',
+      [block.height, block.hash]
+    );
   } catch(err) {
     // Ignore unique_violation code 23505.
     if (err.code === 23505 || err.code === '23505')
@@ -558,30 +518,24 @@ exports.putBlock = function*(block) {
 
 exports.getBlockNotifications = function*() {
   debug('Getting block notification list');
-  let sql = `SELECT channel_name, array_agg(username) AS users
-             FROM blocknotifications GROUP BY channel_name`;
-
-  let par  = [];
-  let data = yield* query(sql, par);
+  let data = yield* query(
+    `SELECT channel_name, array_agg(username) AS users
+       FROM blocknotifications GROUP BY channel_name`
+  );
 
   let map = new Map();
-  data.rows.forEach(function(val) {
-    map.set(val.channel_name, val.users);
-  });
+  data.rows.forEach(val => map.set(val.channel_name, val.users));
   return map;
 };
 
-exports.putBlockNotification = function*(username, channelName) {
-  debug(
-    'Adding %s to block notification list on channel %s',
-    username, channelName
-  );
-  let sql = `INSERT INTO blocknotifications(username, channel_name)
-             VALUES($1, $2)`;
-  let par = [username, channelName];
+exports.putBlockNotification = function*(user, channel) {
+  debug(`Adding ${user} to block notification list on channel ${channel}`);
 
   try {
-    yield* query(sql, par);
+    yield* query(
+      `INSERT INTO blocknotifications(username, channel_name) VALUES($1, $2)`,
+      [user, channel]
+    );
   } catch(err) {
     // Ignore unique_violation code 23505.
     if (err.code !== 23505 && err.code !== '23505') throw err;
@@ -590,29 +544,25 @@ exports.putBlockNotification = function*(username, channelName) {
 
 exports.clearBlockNotifications = function*() {
   debug('Clearing block notification list');
-  let sql = 'DELETE FROM blocknotifications';
-  let par = [];
-  yield* query(sql, par);
+  yield* query('DELETE FROM blocknotifications');
 };
 
 exports.getGameCrashMedian = function*(numGames) {
   debug('Retrieving game crash median');
 
-  let sql =
-    `WITH t AS (SELECT game_crash FROM games ORDER BY id DESC LIMIT $1)
-       SELECT percentile_cont(0.5)
-       WITHIN GROUP (ORDER BY game_crash) AS median, COUNT(*)
-       FROM t`;
-  let par = [numGames];
-  let data = yield* query(sql, par);
-
+  let data = yield* query(
+    `SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY game_crash) AS median,
+       COUNT(*)
+     FROM (SELECT game_crash FROM games ORDER BY id DESC LIMIT $1) t`,
+    [numGames]
+  );
   return data.rows[0];
 };
 
 exports.getLastStreak = function*(count, op, bound) {
   debug('Retrieving last streak');
 
-  let sql =
+  let data = yield* query(
     `WITH
        t1 AS
          (SELECT
@@ -620,24 +570,16 @@ exports.getLastStreak = function*(count, op, bound) {
             CASE WHEN id IS DISTINCT FROM (lag(id) OVER (ORDER BY id)) + 1
               THEN id
             END AS id_start
-          FROM games
-          WHERE game_crash ` + op + ` $1),
-       t2 AS
-         (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
-          FROM t1),
+          FROM games WHERE game_crash ${op} $1),
+       t2 AS (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group FROM t1),
        best AS
-         (SELECT id_group, COUNT(*)
-          FROM t2
-          GROUP BY id_group
-          HAVING count(*) >= $2
-          ORDER BY id_group DESC LIMIT 1)
-     SELECT id game_id, game_crash game_crash
-     FROM games, best
+         (SELECT id_group, COUNT(*) FROM t2 GROUP BY id_group
+          HAVING count(*) >= $2 ORDER BY id_group DESC LIMIT 1)
+     SELECT id game_id, game_crash game_crash FROM games, best
      WHERE id >= best.id_group AND id < best.id_group + best.count
-     ORDER BY id`;
-
-  let par = [bound, count];
-  let data = yield* query(sql, par);
+     ORDER BY id`,
+    [bound, count]
+  );
 
   return data.rows;
 };
@@ -645,7 +587,7 @@ exports.getLastStreak = function*(count, op, bound) {
 exports.getMaxStreak = function*(op, bound) {
   debug('Retrieving max streak');
 
-  let sql =
+  let data = yield* query(
     `WITH
        t1 AS
          (SELECT
@@ -654,7 +596,7 @@ exports.getMaxStreak = function*(op, bound) {
               THEN id
             END AS id_start
           FROM games
-          WHERE game_crash ` + op + ` $1),
+          WHERE game_crash ${op} $1),
        t2 AS
          (SELECT id, max(id_start) OVER (ORDER BY id) AS id_group
           FROM t1),
@@ -666,73 +608,57 @@ exports.getMaxStreak = function*(op, bound) {
      SELECT id game_id, game_crash game_crash
      FROM games, best
      WHERE id >= best.id_group AND id < best.id_group + best.count
-     ORDER BY id`;
-  let par = [bound];
-  let data = yield* query(sql, par);
+     ORDER BY id`,
+    [bound]
+  );
 
   return data.rows;
 };
 
 exports.getProfitTime = function*(username, time) {
-  let sql =
+  let res = yield* query(
     `SELECT SUM(COALESCE(cash_out,0) - bet + COALESCE(bonus,0)) AS profit
-       FROM plays
-       WHERE user_id = userIdOf($1) AND game_id >= (
-         SELECT id FROM games
-         WHERE created >= $2
-         ORDER BY id ASC LIMIT 1
-       )`;
-
-  let par = [username, new Date(Date.now() - time)];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].profit;
+     FROM plays WHERE user_id = userIdOf($1) AND game_id >= (
+       SELECT id FROM games WHERE created >= $2 ORDER BY id ASC LIMIT 1)`,
+    [username, new Date(Date.now() - time)]
+  );
+  return res.rows[0].profit;
 };
 
 exports.getProfitGames = function*(username, games) {
-  let sql =
-    'WITH' +
-    '  t AS (SELECT * FROM plays_view' +
-    '        WHERE user_id = userIdOf($1)' +
-    '        ORDER BY game_id' +
-    '        DESC LIMIT $2)' +
-    '  SELECT COALESCE(SUM(profit),0) profit FROM t';
-  let par = [username, games];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].profit;
+  let res = yield* query(
+    `SELECT SUM(COALESCE(cash_out,0) - bet + COALESCE(bonus,0)) AS profit
+     FROM (SELECT * FROM plays WHERE user_id = userIdOf($1)
+           ORDER BY game_id DESC LIMIT $2) t`,
+    [username, games]
+  );
+  return res.rows[0].profit;
 };
 
 exports.getSiteProfitTime = function*(time) {
-  let sql =
+  let res = yield* query(
     `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
-       FROM games WHERE created >= $1`;
-
-  let par = [new Date(Date.now() - time)];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].profit;
+       FROM games WHERE created >= $1`,
+    [new Date(Date.now() - time)]
+  );
+  return res.rows[0].profit;
 };
 
 exports.getSiteProfitGames = function*(games) {
-  let sql =
+  let res = yield* query(
     `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
-       FROM games WHERE id >= (SELECT MAX(id) FROM games) - $1`;
-  let par = [games];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].profit;
+       FROM games WHERE id >= (SELECT MAX(id) FROM games) - $1`,
+    [games]
+  );
+  return res.rows[0].profit;
 };
 
 exports.getMissingGames = function*(beg, end) {
   // Retrieve missing games
   let missing = yield* query(
-    `WITH s AS
-       (SELECT num AS missing
-          FROM  generate_series($1::bigint, $2::bigint) t(num)
-          LEFT JOIN games ON (t.num = games.id)
-          WHERE games.id IS NULL)
-       SELECT array_agg(s.missing) AS missing FROM s`,
+    `SELECT array_agg(s.missing) AS missing FROM (
+       SELECT num AS missing FROM generate_series($1::bigint, $2::bigint) t(num)
+       LEFT JOIN games ON (t.num = games.id) WHERE games.id IS NULL) s`,
     [beg, end]
   );
 
@@ -745,29 +671,25 @@ exports.getUserProfit = function*(username) {
        game_id AS game,
        SUM(COALESCE(cash_out,0) + COALESCE(bonus,0) - bet)
          OVER (ROWS UNBOUNDED PRECEDING) AS profit
-     FROM plays
-     WHERE user_id = userIdOf($1)
-     ORDER BY game_id ASC`, [username]);
+     FROM plays WHERE user_id = userIdOf($1) ORDER BY game_id ASC`,
+    [username]
+  );
   return res.rows;
 };
 
 exports.getWageredTime = function*(time) {
-  let sql =
-    `SELECT SUM(wagered) wagered FROM games
-       WHERE created >= $1`;
-
-  let par = [new Date(Date.now() - time)];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].wagered;
+  let res = yield* query(
+    `SELECT SUM(wagered) wagered FROM games WHERE created >= $1`,
+    [new Date(Date.now() - time)]
+  );
+  return res.rows[0].wagered;
 };
 
 exports.getWageredGames = function*(games) {
-  let sql =
+  let res = yield* query(
     `SELECT SUM(wagered) wagered FROM games
-       WHERE id >= (SELECT MAX(id) FROM games) - $2`;
-  let par = [username, games];
-  let data = yield* query(sql, par);
-
-  return data.rows[0].wagered;
+       WHERE id >= (SELECT MAX(id) FROM games) - $1`,
+    [games]
+  );
+  return res.rows[0].wagered;
 };
