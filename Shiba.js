@@ -452,6 +452,12 @@ Shiba.prototype.onCmdSeen = function*(msg, user) {
     return;
   }
 
+  // Special treatment of nyan.
+  if (user === 'nyan') {
+    yield* this.cmdBust.handle(this.webClient, this.client, msg, '>= 1000');
+    return;
+  }
+
   // Somebody asks us when we've seen ourselves.
   if (this.client.username && this.client.username.toLowerCase() === user) {
     doSay('strange loops. much confusion.');
