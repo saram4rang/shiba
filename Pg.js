@@ -637,7 +637,7 @@ exports.getProfitGames = function*(username, games) {
 
 exports.getSiteProfitTime = function*(time) {
   let res = yield* query(
-    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
+    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonused) AS profit
        FROM games WHERE created >= $1`,
     [new Date(Date.now() - time)]
   );
@@ -646,7 +646,7 @@ exports.getSiteProfitTime = function*(time) {
 
 exports.getSiteProfitGames = function*(games) {
   let res = yield* query(
-    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonus) AS profit
+    `SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonused) AS profit
        FROM games WHERE id >= (SELECT MAX(id) FROM games) - $1`,
     [games]
   );
