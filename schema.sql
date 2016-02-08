@@ -343,3 +343,27 @@ RETURNS numeric AS $$
        ORDER BY id ASC LIMIT 1
   ))
 $$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION
+  sitewageredtime(timestamp with time zone)
+RETURNS numeric AS $$
+  SELECT
+    COALESCE((
+      SELECT SUM(wagered)
+      FROM games WHERE created >= $1 AND
+       created < date_trunc('hour', $1::timestamp without time zone) +
+                   '1 hour'::interval), 0) +
+    COALESCE((
+      SELECT SUM(wagered)
+      FROM sitestats WHERE timespan > $1), 0)
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION
+  sitewageredgames(bigint)
+RETURNS numeric AS $$
+  SELECT sitewageredtime((
+    SELECT created FROM games
+       WHERE id > (SELECT MAX(id) FROM games) - $1
+       ORDER BY id ASC LIMIT 1
+  ))
+$$ LANGUAGE SQL STABLE;
