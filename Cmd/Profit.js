@@ -18,21 +18,27 @@ Profit.prototype.handle = function*(client, msg, rawInput) {
     throw err;
   }
 
-  let username = input.user ? input.user : msg.username;
-  // TODO: Move this constant.
-  let isOwner  = username.toLowerCase() === 'ryan';
-  let result;
-  if (isOwner && input.time)
-    result = yield* Pg.getSiteProfitTime(input.time);
-  else if (isOwner)
-    result = yield* Pg.getSiteProfitGames(input.games);
-  else if (input.time)
-    result = yield* Pg.getProfitTime(username, input.time);
-  else
-    result = yield* Pg.getProfitGames(username, input.games);
+  try {
+    let username = input.user ? input.user : msg.username;
+    // TODO: Move this constant.
+    let isOwner  = username.toLowerCase() === 'ryan';
+    let result;
+    if (isOwner && input.time)
+      result = yield* Pg.getSiteProfitTime(input.time);
+    else if (isOwner)
+      result = yield* Pg.getSiteProfitGames(input.games);
+    else if (input.time)
+      result = yield* Pg.getProfitTime(username, input.time);
+    else
+      result = yield* Pg.getProfitGames(username, input.games);
 
-  let response = (result / 100).toFixed(2) + ' bits';
-  client.doSay(response, msg.channelName);
+    let response = (result / 100).toFixed(2) + ' bits';
+    client.doSay(response, msg.channelName);
+  } catch(err) {
+    client.doSay('wow. such database fail', msg.channelName);
+    console.error('ERROR:', err && err.stack || err);
+    throw err;
+  }
 };
 
 module.exports = exports = Profit;

@@ -319,3 +319,27 @@ AFTER INSERT OR UPDATE OR DELETE ON games
 CREATE OR REPLACE FUNCTION userIdOf(text) RETURNS bigint AS $$
   SELECT id FROM users WHERE lower(username) = lower($1)
 $$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION
+  siteprofittime(timestamp with time zone)
+RETURNS numeric AS $$
+  SELECT
+    COALESCE((
+      SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonused)
+      FROM games WHERE created >= $1 AND
+       created < date_trunc('hour', $1::timestamp without time zone) +
+                   '1 hour'::interval), 0) +
+    COALESCE((
+      SELECT SUM(wagered) - SUM(cashed_out) - SUM(bonused)
+      FROM sitestats WHERE timespan > $1), 0)
+$$ LANGUAGE SQL STABLE;
+
+CREATE OR REPLACE FUNCTION
+  siteprofitgames(bigint)
+RETURNS numeric AS $$
+  SELECT siteprofittime((
+    SELECT created FROM games
+       WHERE id > (SELECT MAX(id) FROM games) - $1
+       ORDER BY id ASC LIMIT 1
+  ))
+$$ LANGUAGE SQL STABLE;
