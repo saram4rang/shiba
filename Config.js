@@ -18,6 +18,7 @@ module.exports =
   GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 200,
   USER_WHITELIST: [
     'bitcoininformation',
+    'csm',
     'dexon',
     'dexonbot',
     'kungfuant',
