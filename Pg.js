@@ -187,7 +187,10 @@ function* getUser(username) {
     throw 'USERNAME_INVALID';
 
   try {
-    return yield* userCache.get(username);
+    let user = yield* userCache.get(username);
+    assert(user.username.toLowerCase() === username.toLowerCase());
+    assert(Number.isInteger(user.id));
+    return user;
   } catch(err) {
     console.error('[Pg.getUser] ERROR:', err && err.stack || err);
     throw err;
