@@ -133,9 +133,9 @@ function* withTransaction(runner) {
 function* getOrCreateUser(username) {
   debug(`GetOrCreateUser user: ${username}`);
 
-  return yield* withTransaction(function*(query) {
+  let user = yield* withTransaction(function*(query) {
     let res = yield* query(
-      'SELECT * FROM users WHERE lower(username) = lower($1)',
+      'SELECT username, id FROM users WHERE lower(username) = lower($1)',
       [username]
     );
 
@@ -154,6 +154,9 @@ function* getOrCreateUser(username) {
     assert(res.rows.length === 1);
     return res.rows[0];
   });
+
+  debugpg(`GetOrCreateUser "${username}": ${JSON.stringify(user)}`);
+  return user;
 }
 
 function* getExistingUser(username) {
