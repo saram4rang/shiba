@@ -83,11 +83,11 @@ GameStore.prototype.fillMissing = function*(data) {
     debug('Importing missing id: %d', id);
     try {
       yield* this.importGame(id);
-      yield wait(200);
     } catch(err) {
       // Message error but continue. Could be an unterminated game.
       console.error('Error while importing game %d:', id, err.stack || err);
     }
+    yield wait(1500);
   }
 
   // Finally replace the store with the current games. TODO: Yes, there is a
