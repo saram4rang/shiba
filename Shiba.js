@@ -196,8 +196,8 @@ Shiba.prototype.checkRate = function*(msg) {
     {count: 8, seconds: 1, mute: '6h'},
     {count: 6, seconds: 1, mute: '30m'},
     {count: 4, seconds: 1, mute: '15m'},
-    {count: 5, seconds: 5, mute: '15m'},
-    {count: 8, seconds: 12, mute: '15m'}
+    {count: 5, seconds: 3, mute: '15m'},
+    {count: 15, seconds: 20, mute: '15m'}
   ];
 
   for (let rate of rates) {
