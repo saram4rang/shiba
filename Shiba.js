@@ -169,8 +169,12 @@ Shiba.prototype.checkAutomute = function*(msg) {
   if (urls.length === 0) return false;
 
   // Unshorten extracted URLs.
-  urls2 = yield* Unshort.unshorts(urls);
-  urls  = urls.concat(urls2 || []);
+  try {
+    urls2 = yield* Unshort.unshorts(urls);
+    urls  = urls.concat(urls2 || []);
+  } catch(e) {
+    // Unshort failed. Just continue without it.
+  }
 
   debugautomute('Url list: ' + JSON.stringify(urls));
 
