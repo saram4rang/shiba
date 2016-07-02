@@ -86,6 +86,7 @@ function pretty(iso, num, mod) { /* eslint complexity: 0 */
   case 'INR': return '₹' + num + mod;
   case 'KRW': return '₩' + num + mod;
   case 'USD': return '$' + num + mod;
+  case 'PHP': return '₱' + num + mod;
   case 'BIT': return num === 1 && mod1 ? '1 Bit' : num + mod + ' Bits';
   case 'SAT': return num + mod + ' satoshi';
   case 'KOINU': return num + mod + ' 子犬';
