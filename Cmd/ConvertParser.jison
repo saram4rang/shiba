@@ -52,7 +52,10 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       "子犬"|"KOINU"|
       "LTC"|"LITECOINS"|"LITECOIN"|
       "RDD"|"REDDCOINS"|"REDDCOIN"|
-      "NXT"|"NXTCOIN"
+      "NXT"|"NXTCOIN"|
+      "ETH"|"ETHER"|
+      "ETC"|
+      "BURST"
 
 /* Currency signs. Currently doesn't include "¥" because it could stand for
  * either CNY or JPY. The Kwon symbol "₩" stands for both KRW and KPW, but we

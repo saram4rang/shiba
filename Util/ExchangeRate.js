@@ -52,6 +52,9 @@ function* getRates() {
   importpolo('LTC');
   importpolo('RDD');
   importpolo('NXT');
+  importpolo('ETH');
+  importpolo('ETC');
+  importpolo('BURST');
 
   return rates;
 }
