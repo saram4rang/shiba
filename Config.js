@@ -21,10 +21,12 @@ module.exports =
     'csm',
     'dexon',
     'dexonbot',
+    'gecox22',
     'kungfuant',
     'rapetor',
     'ryan',
     'shiba',
-    'steve'
+    'steve',
+    'turtledaddykim'
   ]
 };
