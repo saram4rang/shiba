@@ -42,8 +42,11 @@ function* getGameInfo(id) {
   let url = Config.WEBSERVER + '/game/' + id + '.json';
   let res = yield request(url);
 
-  if (res.statusCode !== 200)
+  if (res.statusCode !== 200) {
+    console.error("Got status code:", res.statusCode);
+    console.error("Body:", res.body);
     throw 'INVALID_STATUSCODE';
+  }
 
   return JSON.parse(res.body);
 }
@@ -76,7 +79,7 @@ GameStore.prototype.fillMissing = function*(data) {
   let maxGameId = data.state === 'ENDED' ? data.game_id : data.game_id - 1;
 
   // Get ids of missing games. TODO: move this constants
-  let ids = yield* Pg.getMissingGames(2280000, maxGameId);
+  let ids = yield* Pg.getMissingGames(3190000, maxGameId);
 
   // Import them from the web.
   for (let id of ids) {
