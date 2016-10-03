@@ -22,6 +22,7 @@
     "pg": "^4.4.3",
     "poloniex.js": "^0.0.6",
     "socket.io-client": "~1.4.4",
+    "word-wrap": "^1.1.0",
     "ws": "^1.0.1"
   },
   "devDependencies": {

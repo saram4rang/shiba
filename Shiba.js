@@ -23,6 +23,7 @@ const CmdProb      =  require('./Cmd/Prob');
 const CmdProfit    =  require('./Cmd/Profit');
 const CmdSql       =  require('./Cmd/Sql');
 const CmdStreak    =  require('./Cmd/Streak');
+const CmdUrban     =  require('./Cmd/Urban');
 const CmdWagered   =  require('./Cmd/Wagered');
 
 const mkCmdBlock     =  require('./Cmd/Block');
@@ -61,6 +62,7 @@ function Shiba() {
     self.cmdProfit   = new CmdProfit();
     self.cmdSql      = new CmdSql();
     self.cmdStreak   = new CmdStreak();
+    self.cmdUrban    = new CmdUrban();
     self.cmdWagered  = new CmdWagered();
 
     // Connect to the game server.
@@ -264,6 +266,7 @@ let cmdAliases = {
   profit:   ['prfit', 'profi', 'prof', 'prft', 'prf', 'prt'],
   sql:      [],
   streak:   [],
+  urban:    ['ud', 'dict', 'urbandictionary', 'u', 'd', 'define', 'def'],
   wagered:  ['w', 'wager', 'wagerd', 'wagr', 'wagrd', 'wagred', 'wd',
              'wg', 'wgd', 'wger', 'wgerd', 'wgr', 'wgrd', 'wgred'
             ]
@@ -282,7 +285,7 @@ _.forEach(cmdAliases, (aliases, cmd) => {
 
 // A list of commands not allows in the english channel.
 let cmdBlacklist = [
-  'bust', 'convert', 'median', 'prob', 'profit', 'streak', 'wagered'
+  'bust', 'convert', 'median', 'prob', 'profit', 'streak', 'urban', 'wagered'
 ];
 
 /* eslint complexity: [2,16] */
@@ -346,6 +349,9 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     break;
   case 'streak':
     yield* this.cmdStreak.handle(this.webClient, msg, rest);
+    break;
+  case 'urban':
+    yield* this.cmdUrban.handle(this.webClient, msg, rest);
     break;
   case 'wagered':
     yield* this.cmdWagered.handle(this.webClient, msg, rest);
