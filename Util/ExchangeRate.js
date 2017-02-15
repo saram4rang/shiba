@@ -23,7 +23,9 @@ const fiatRatesCache = new Cache({
 });
 
 function* getFiatRates() {
+  debug('Getting fiat rates');
   var data = yield* fiatRatesCache.get('');
+  debug('Updating fiat rate info');
   return data.rates;
 }
 
@@ -41,8 +43,15 @@ function* getRates() {
   rates.BIT = 1e6 / usdBtc;
   rates.SAT = 1e8 / usdBtc;
 
+  debug('Updating Poloniex rate info');
   function importpolo(sym) {
-    let ticker = Poloniex.ticker['BTC_' + sym];
+    debug('Updating Poloniex ' + sym + ' rate');
+    let id     = 'BTC_' + sym;
+    if (!(id in Poloniex.ticker)) {
+      debug('Rate info for ' + sym + ' missing. Delisted?');
+      return;
+    }
+    let ticker = Poloniex.ticker[id];
     let avg    = (ticker.lowestAsk + ticker.highestBid) / 2;
     rates[sym] = 1 / (usdBtc * avg);
   }
@@ -50,7 +59,6 @@ function* getRates() {
   importpolo('CLAM');
   importpolo('DOGE'); rates.KOINU = 1e8 * rates.DOGE;
   importpolo('LTC');
-  importpolo('RDD');
   importpolo('NXT');
   importpolo('ETH');
   importpolo('ETC');

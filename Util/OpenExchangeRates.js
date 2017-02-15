@@ -1,6 +1,6 @@
 'use strict';
 
-const debug   = require('debug')('shiba:bitstamp');
+const debug   = require('debug')('shiba:oxr');
 const request = require('co-request');
 
 const API     = 'http://openexchangerates.org/api/';

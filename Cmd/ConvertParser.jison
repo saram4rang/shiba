@@ -51,7 +51,6 @@ ISO   "AED"|"AFN"|"ALL"|"AMD"|"ANG"|"AOA"|"ARS"|"AUD"|"AWG"|"AZN"|"BAM"|"BBD"|
       "XDG"|"DOGE"|"DOGECOINS"|"DOGECOIN"|
       "子犬"|"KOINU"|
       "LTC"|"LITECOINS"|"LITECOIN"|
-      "RDD"|"REDDCOINS"|"REDDCOIN"|
       "NXT"|"NXTCOIN"|
       "ETH"|"ETHER"|
       "ETC"|
@@ -119,8 +118,6 @@ function normIso(sym) {
   case 'XDG':      return 'DOGE';
   case 'LITECOINS':
   case 'LITECOIN': return 'LTC';
-  case 'REDDCOINS':
-  case 'REDDCOIN': return 'RDD';
   case 'NXTCOIN':  return 'NXT';
   case '子犬':     return 'KOINU';
   default:         return sym.toUpperCase();
