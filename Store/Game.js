@@ -24,11 +24,15 @@ inherits(GameStore, EventEmitter);
 GameStore.prototype.addGame = function*(game) {
   debug('Adding game: ' + JSON.stringify(game));
 
-  try {
-    yield* Pg.putGame(game);
-  } catch(err) {
-    console.error(`Failed to log game: ${game}`);
-    console.error(`Error: ${err && err.stack || err}`);
+  // Try up to 5 times to log the game
+  for (let i = 1; i <= 5; ++i) {
+    try {
+      yield* Pg.putGame(game);
+      break;
+    } catch(err) {
+      console.error(`Failed to log game: ${game.game_id} try: ${i}`);
+      console.error(`Error: ${err && err.stack || err}`);
+    }
   }
 
   if (this.store.length > Config.GAME_HISTORY)
@@ -65,11 +69,17 @@ GameStore.prototype.importGame = function*(id) {
   // TODO: move this constant
   info.startTime = info.created + 5000;
 
-  try {
-    yield* Pg.putGame(info);
-  } catch(err) {
-    console.error('Importing game #' + info.game_id, 'failed');
-    throw err;
+  // Try up to 5 times to import the game
+  for (let i = 1; i <= 5; ++i) {
+    try {
+      yield* Pg.putGame(info);
+      break;
+    } catch(err) {
+      if (i == 5) {
+        console.error('Importing game #' + info.game_id, 'failed');
+        throw err;
+      }
+    }
   }
 };
 
