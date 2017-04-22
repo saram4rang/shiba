@@ -16,17 +16,37 @@ module.exports =
   DATABASE:       process.env.SHIBA_DATABASE || 'postgres://localhost/shibadb',
   CHAT_HISTORY:   process.env.SHIBA_CHAT_HISTORY || 2000,
   GAME_HISTORY:   process.env.SHIBA_GAME_HISTORY || 200,
+  /* keep in lowercase */
   USER_WHITELIST: [
+    '01010100b',
+    'alexk08',
+    'almighty',
+    'beebo',
     'bitcoininformation',
+    'cooldad',
+    'cowbay',
     'csm',
+    'delorian',
     'dexon',
     'dexonbot',
+    'dmt',
+    'dooglus',
+    'dxc',
     'gecox22',
     'kungfuant',
+    'lakai',
+    'martinbot',
+    'marting',
+    'neta',
+    'netaban',
+    'qcrc5u4',
     'rapetor',
     'ryan',
     'shiba',
     'steve',
-    'turtledaddykim'
+    'techdeck',
+    'turtledaddykim',
+    'wake_up_son',
+    'xrnath'
   ]
 };

@@ -301,7 +301,9 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   // Check if a blacklisted command is used in the english channel.
   if (msg.channelName === 'english' &&
       cmdBlacklist.indexOf(cmd) >= 0 &&
-      Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0) {
+      Config.USER_WHITELIST.indexOf(msg.username.toLowerCase()) < 0 &&
+      msg.role !== 'admin' &&
+      msg.role !== 'moderator') {
     this.webClient.doSay(
       '@' + msg.username +
         ' Please use the SPAM channel for that command.',
