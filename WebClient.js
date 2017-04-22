@@ -102,7 +102,9 @@ WebClient.prototype.doMute = function(user, timespec, channelName) {
       if (err)
         console.error('[WebClient.doMute]', err);
     });
+    return true;
   } else {
     debugchat('Not muting whitelisted user: %s time: %s', user, timespec);
+    return false;
   }
 };

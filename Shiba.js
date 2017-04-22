@@ -155,10 +155,8 @@ Shiba.prototype.checkAutomute = function*(msg) {
 
   // Match entire message against the regular expressions.
   let automutes = this.automuteStore.get();
-  if (automutes.find(r => msg.message.match(r))) {
-    this.webClient.doMute(msg.username, '3h', msg.channelName);
-    return true;
-  }
+  if (automutes.find(r => msg.message.match(r)))
+    return this.webClient.doMute(msg.username, '3h', msg.channelName);
 
   // Extract a list of URLs.
   // TODO: The regular expression could be made more intelligent.
@@ -187,8 +185,7 @@ Shiba.prototype.checkAutomute = function*(msg) {
     let automute = automutes.find(r => url.match(r));
     if (automute) {
       debugautomute('URL matched ' + automute);
-      this.webClient.doMute(msg.username, '6h', msg.channelName);
-      return true;
+      return this.webClient.doMute(msg.username, '6h', msg.channelName);
     }
   }
 
@@ -210,10 +207,8 @@ Shiba.prototype.checkRate = function*(msg) {
     let after    = new Date(Date.now() - rate.seconds * 1000);
     let messages = this.chatStore.getChatMessages(msg.username, after);
 
-    if (messages.length > rate.count) {
-      this.webClient.doMute(msg.username, rate.mute, msg.channelName);
-      return true;
-    }
+    if (messages.length > rate.count)
+      return this.webClient.doMute(msg.username, rate.mute, msg.channelName);
   }
 
   return false;
@@ -241,8 +236,7 @@ Shiba.prototype.checkCmdRate = function*(msg) {
   });
 
   if (count >= 5) {
-    this.webClient.doMute(msg.username, '5m', msg.channelName);
-    return true;
+    return this.webClient.doMute(msg.username, '5m', msg.channelName);
   } else if (count >= 4) {
     this.webClient.doSay('bites ' + msg.username, msg.channelName);
     return true;
