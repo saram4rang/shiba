@@ -12,11 +12,13 @@ const _ = require('lodash');
 
 INT    [1-9][0-9]*
 
-WEEK     {INT}"w"
-DAY      {INT}"d"
-HOUR     {INT}"h"
-MINUTE   {INT}"m"
-SECOND   {INT}"s"
+YEAR     {INT}("years"|"year"|"y")
+MONTH    {INT}("months"|"month")
+WEEK     {INT}("weeks"|"week"|"w")
+DAY      {INT}("days"|"day"|"d")
+HOUR     {INT}("hours"|"hour"|"h")
+MINUTE   {INT}("minutes"|"minute"|"m")
+SECOND   {INT}("seconds"|"second"|"s")
 AT       "@"
 U        [a-z0-9_\-]
 USERNAME {AT}?{U}{U}{U}+
@@ -25,6 +27,8 @@ USERNAME {AT}?{U}{U}{U}+
 
 \s+          /* skip whitespace */
 
+{YEAR}       return 'YEAR';
+{MONTH}      return 'MONTH';
 {WEEK}       return 'WEEK';
 {DAY}        return 'DAY';
 {HOUR}       return 'HOUR';
@@ -66,10 +70,20 @@ timeweek
   | WEEK -> parseInt(yytext)*7*24*60*60
   | timeday -> $1
   ;
+timemonth
+  : MONTH timeweek -> parseInt(yytext)*30*24*60*60 + $1
+  | MONTH -> parseInt(yytext)*30*24*60*60
+  | timeweek -> $1
+  ;
+timeyear
+  : YEAR timemonth -> parseInt(yytext)*365*24*60*60 + $1
+  | YEAR -> parseInt(yytext)*365*24*60*60
+  | timemonth -> $1
+  ;
 
 /* As a summary the two query options. */
 timeago
-  : timeweek -> $1 * 1000 /* convert to milliseconds here */
+  : timeyear -> $1 * 1000 /* convert to milliseconds here */
   ;
 games
   : GAMES -> parseInt($1)
