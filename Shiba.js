@@ -247,22 +247,24 @@ Shiba.prototype.checkCmdRate = function*(msg) {
 
 // Map command names to list of aliases:
 let cmdAliases = {
-  custom:   [],
-  lick:     ['lck', 'lic', 'lik', 'lk'],
-  seen:     ['sen', 'sn', 's'],
-  help:     ['faq'],
-  convert:  ['conver', 'conv', 'cv', 'c'],
+  automute: [],
   block:    ['blck', 'blk', 'bl'],
   bust:     ['bst', 'bt'],
-  automute: [],
+  convert:  ['conver', 'conv', 'cv', 'c'],
+  custom:   [],
+  fair:     ['scam'],
+  help:     ['h','faq'],
+  lick:     ['lck', 'lic', 'lik', 'lk'],
+  nyan:     ['n', 'ny', 'na', 'nn', 'nya', 'nyn', 'nan'],
   median:   ['med'],
   prob:     ['prb', 'pob', 'pb', 'p'],
   profit:   ['prfit', 'profi', 'prof', 'prft', 'prf', 'prt'],
+  seen:     ['sen', 'sn', 's'],
   sql:      [],
   streak:   [],
   urban:    ['ud', 'dict', 'urbandictionary', 'u', 'd', 'define', 'def'],
   wagered:  ['w', 'wager', 'wagerd', 'wagr', 'wagrd', 'wagred', 'wd',
-             'wg', 'wgd', 'wger', 'wgerd', 'wgr', 'wgrd', 'wgred'
+             'wg', 'wgd', 'wger', 'wgerd', 'wgr', 'wgrd', 'wgred', 'wagered'
             ]
 };
 
@@ -322,6 +324,9 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
   case 'custom':
     yield* this.onCmdCustom(msg, rest);
     break;
+  case 'fair':
+    yield* this.onCmdFair(msg, rest);
+    break;
   case 'help':
     yield* this.onCmdHelp(msg, rest);
     break;
@@ -330,6 +335,9 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
     break;
   case 'median':
     yield* this.cmdMedian.handle(this.webClient, msg, rest);
+    break;
+  case 'nyan':
+    yield* this.cmdBust.handle(this.webClient, this.client, msg, '>= 1000');
     break;
   case 'prob':
     yield* this.cmdProb.handle(this.webClient, msg, rest);
@@ -359,7 +367,14 @@ Shiba.prototype.onCmd = function*(msg, cmd, rest) {
 Shiba.prototype.onCmdHelp = function*(msg, rest) {
   this.webClient.doSay(
       'very explanation. much insight: ' +
+      'https://www.bustabit.com/faq ' +
       'https://github.com/moneypot/shiba/wiki/', msg.channelName);
+};
+
+Shiba.prototype.onCmdFair = function*(msg, rest) {
+  this.webClient.doSay(
+      'so fair. very proof: ' +
+      'https://www.bustabit.com/faq#fair', msg.channelName);
 };
 
 Shiba.prototype.onCmdCustom = function*(msg, rest) {
