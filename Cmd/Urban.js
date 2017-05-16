@@ -59,7 +59,7 @@ Urban.prototype.handle = function*(client, msg, input) {
         numChars += line.length;
       } else {
         const url =
-          'https://urbandictionary.com/define?term=' +
+          'http://urbandictionary.com/define.php?term=' +
           encodeURIComponent(input);
         client.doSay(line + ' ...', msg.channelName);
         client.doSay('Full definition: ' + url, msg.channelName);
