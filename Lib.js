@@ -136,7 +136,7 @@ module.exports = {
       return val === 0;
     },
   clientSeed:
-    '000000000000000007a9a31ff7f07463d91af6b5454241d5faf282e5e0fe1b3a',
+    '0000000003a96dc6e52672a487ec577fc32e71a8f99bdbbf7329bf27f9772544',
   crashPoint:
     function(serverSeed) {
       console.assert(typeof serverSeed === 'string');
